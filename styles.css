@@ -247,3 +247,29 @@ html.compact .time-group{gap:5px}
   .photo-import-item{grid-template-columns:72px 1fr}
   .photo-import-item>img{width:72px;height:72px}
 }
+
+
+/* Presentation notes */
+.notes-section{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.notes-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}
+.notes-section-head h3{margin:0;font-size:15px}
+.note-save-status{font-size:10px;color:var(--muted)}
+.presentation-note{
+  width:100%;
+  min-height:118px;
+  resize:vertical;
+  box-sizing:border-box;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px 13px;
+  background:var(--surface-2);
+  color:var(--text);
+  font:inherit;
+  font-size:13px;
+  line-height:1.5;
+  outline:none;
+}
+.presentation-note::placeholder{color:var(--muted)}
+.presentation-note:focus{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
+html[data-theme="dark"] .presentation-note{background:var(--surface-2);color:#fff;caret-color:#fff}
+html[data-theme="dark"] .presentation-note::placeholder{color:var(--muted)}

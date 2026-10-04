@@ -13,7 +13,8 @@
     room: "all",
     day: 1,
     posterCategory: "all",
-    view: "program"
+    view: "program",
+    notes: {}
   };
 
   const $ = (s) => document.querySelector(s);
@@ -42,6 +43,44 @@
 
   function esc(v="") {
     return String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+  }
+
+
+  function noteKey(type, id) {
+    return `${type}:${id}`;
+  }
+
+  function getNote(type, id) {
+    return String(state.notes?.[noteKey(type,id)] || "");
+  }
+
+  function saveNote(type, id, value) {
+    if (!state.notes || typeof state.notes !== "object" || Array.isArray(state.notes)) {
+      state.notes = {};
+    }
+    const key = noteKey(type,id);
+    const text = String(value || "");
+    if (text.trim()) state.notes[key] = text;
+    else delete state.notes[key];
+    saveState();
+  }
+
+  function noteSectionHtml(type, id) {
+    return `<section class="notes-section">
+      <div class="notes-section-head">
+        <h3>Notes</h3>
+        <span id="noteSaveStatus" class="note-save-status">Saved automatically</span>
+      </div>
+      <textarea
+        id="modalNote"
+        class="presentation-note"
+        rows="5"
+        placeholder="Write notes about this presentation…"
+        spellcheck="true"
+        data-note-type="${esc(type)}"
+        data-note-id="${esc(id)}"
+      >${esc(getNote(type,id))}</textarea>
+    </section>`;
   }
 
   function openPhotoDb() {
@@ -979,6 +1018,7 @@
         ${e.chair?`<div class="detail-box"><span>Session chair</span><strong>${esc(e.chair)}</strong></div>`:""}
         <div class="detail-box"><span>Program</span><strong>PDF page ${e.sourcePage}</strong></div>
       </div>
+      ${noteSectionHtml("event", e.id)}
       ${photoSectionHtml()}
       <a class="pdf-link" href="./program.pdf#page=${e.sourcePage}" target="_blank" rel="noopener">Open this page in the PDF ↗</a>`;
     refreshModalStar();
@@ -1003,6 +1043,7 @@
         <div class="detail-box"><span>Program</span><strong>PDF page ${p.sourcePage}</strong></div>
         <div class="detail-box"><span>Book of Abstracts</span><strong>Page ${p.abstractBookPage}</strong></div>
       </div>
+      ${noteSectionHtml("poster", p.id)}
       ${photoSectionHtml()}
       ${p.abstract ? `<section class="abstract-section"><h3>Abstract</h3><div class="abstract-text">${abstractHtml}</div></section>` : ""}
       <a class="pdf-link" href="./program.pdf#page=${p.sourcePage}" target="_blank" rel="noopener">Open this poster in the program PDF ↗</a>`;
@@ -1029,7 +1070,8 @@
   function exportState() {
     const payload = {version:1, exportedAt:new Date().toISOString(), state:{
       favorites:state.favorites, posterFavorites:state.posterFavorites,
-      theme:state.theme, compact:state.compact, timeMode:state.timeMode
+      theme:state.theme, compact:state.compact, timeMode:state.timeMode,
+      notes:state.notes || {}
     }};
     const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
@@ -1043,6 +1085,12 @@
       state={...state,...incoming};
       state.favorites=(state.favorites||[]).filter(id=>byId.has(id));
       state.posterFavorites=(state.posterFavorites||[]).filter(id=>posterById.has(id));
+      if (!state.notes || typeof state.notes !== "object" || Array.isArray(state.notes)) state.notes = {};
+      state.notes = Object.fromEntries(Object.entries(state.notes).filter(([key,value]) => {
+        const [type,id] = String(key).split(":");
+        return typeof value === "string" &&
+          ((type === "event" && byId.has(id)) || (type === "poster" && posterById.has(id)));
+      }));
       saveState(); applyTheme(); syncSettings(); renderProgram(); renderPosters(); renderMySchedule();
       toast("Backup imported");
     } catch { toast("Could not import that file"); }
@@ -1170,6 +1218,29 @@
       if (confirm("Clear all starred talks and posters?")) {
         state.favorites=[];state.posterFavorites=[];saveState();renderProgram();renderPosters();renderMySchedule();toast("Favorites cleared");
       }
+    });
+
+    let noteSaveTimer = null;
+    $("#modalContent").addEventListener("input", e => {
+      const note = e.target.closest("#modalNote");
+      if (!note) return;
+      const status = $("#noteSaveStatus");
+      if (status) status.textContent = "Saving…";
+      clearTimeout(noteSaveTimer);
+      noteSaveTimer = setTimeout(() => {
+        saveNote(note.dataset.noteType, note.dataset.noteId, note.value);
+        const currentStatus = $("#noteSaveStatus");
+        if (currentStatus) currentStatus.textContent = "Saved";
+      }, 250);
+    });
+
+    $("#modalContent").addEventListener("change", e => {
+      const note = e.target.closest("#modalNote");
+      if (!note) return;
+      clearTimeout(noteSaveTimer);
+      saveNote(note.dataset.noteType, note.dataset.noteId, note.value);
+      const status = $("#noteSaveStatus");
+      if (status) status.textContent = "Saved";
     });
 
     $("#modalContent").addEventListener("click", async e => {

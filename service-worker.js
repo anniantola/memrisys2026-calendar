@@ -1,4 +1,4 @@
-const CACHE = "memrisys2026-calendar-v6";
+const CACHE = "memrisys2026-calendar-v7";
 const ASSETS = [
   "./",
   "./index.html",
