@@ -1142,27 +1142,35 @@
     return {x:x+(w-outW)/2, y:y+(h-outH)/2, w:outW, h:outH};
   }
 
+  function photoChronoKey(photo) {
+    const date = String(photo?.captureDate || "9999-12-31");
+    const time = String(photo?.captureTime || "23:59:59");
+    const added = String(photo?.addedAt || 0).padStart(16,"0");
+    const id = String(photo?.id || "").padStart(10,"0");
+    return `${date}|${time}|${added}|${id}`;
+  }
+
   function ownerInfoForExport(type, id) {
     if (type === "unclassified") {
-      return {title:"Unclassified photos", meta:"Photos without a matching conference session", sortKey:"9999|unclassified"};
+      return {title:"Unclassified photos", meta:"Photos without a matching conference session", sortKey:"9999-12-31|23:59:59|9|unclassified"};
     }
     if (type === "poster") {
       const p = posterById.get(id);
-      if (!p) return {title:"Poster", meta:"Poster session", sortKey:"9999|poster"};
+      if (!p) return {title:"Poster", meta:"Poster session", sortKey:"9999-12-31|23:59:59|8|poster"};
       return {
         title:`Poster #${p.number} · ${p.title}`,
         meta:`Tuesday 6 October · 18:00–20:00 · Staatsarchiv · ${p.author || ""}`,
-        sortKey:`2026-10-06|18:00|${String(p.number || 999).padStart(3,"0")}`
+        sortKey:`2026-10-06|18:00:00|1|${String(p.number || 999).padStart(3,"0")}`
       };
     }
     const e = byId.get(id);
-    if (!e) return {title:"Programme item", meta:"", sortKey:"9999|event"};
+    if (!e) return {title:"Programme item", meta:"", sortKey:"9999-12-31|23:59:59|8|event"};
     const person = e.speaker ? ` · ${e.speaker}` : "";
     const room = e.room ? ` · ${e.room}` : "";
     return {
       title:e.title,
       meta:`${e.weekday} ${e.dateLabel} · ${e.start}–${e.end}${room}${person}`,
-      sortKey:`${e.date}|${e.start}|${e.track || 0}`
+      sortKey:`${e.date}|${e.start}:00|0|${String(e.track || 0).padStart(2,"0")}|${e.id}`
     };
   }
 
@@ -1202,7 +1210,7 @@
           info:{
             title,
             meta: stamp ? `${stamp} · Unclassified` : "Unclassified photo",
-            sortKey:`9999|unclassified|${String(photo.captureDate || "")}|${String(photo.captureTime || "")}|${String(photo.id).padStart(8,"0")}`
+            sortKey:`${String(photo.captureDate || "9999-12-31")}|${String(photo.captureTime || "23:59:59")}|2|unclassified|${String(photo.id).padStart(8,"0")}`
           },
           note:"",
           photos:[photo]
@@ -1214,6 +1222,12 @@
 
     return [...map.values()]
       .filter(item => String(item.note || "").trim() || item.photos.length)
+      .map(item => ({
+        ...item,
+        // Keep all photos attached to their topic, but order photos inside that
+        // topic chronologically by the photo capture time.
+        photos:[...item.photos].sort((a,b)=>photoChronoKey(a).localeCompare(photoChronoKey(b)))
+      }))
       .sort((a,b)=>a.info.sortKey.localeCompare(b.info.sortKey));
   }
 
