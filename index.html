@@ -244,7 +244,13 @@
   <dialog id="photoViewer" class="photo-viewer">
     <div class="photo-viewer-shell">
       <button id="photoViewerClose" class="photo-viewer-close" type="button" aria-label="Close photo">×</button>
-      <img id="photoViewerImage" alt="Presentation photo">
+      <div class="photo-viewer-stage">
+        <img id="photoViewerImage" alt="Presentation photo">
+      </div>
+      <div id="photoViewerTitleBar" class="photo-viewer-titlebar" hidden>
+        <label for="photoViewerTitle">Photo title</label>
+        <input id="photoViewerTitle" type="text" maxlength="140" placeholder="Add a custom title…" autocomplete="off">
+      </div>
     </div>
   </dialog>
 

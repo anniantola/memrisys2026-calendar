@@ -1,16 +1,12 @@
 # MEMRISYS 2026 Conference Calendar
 
-## PowerPoint export update
+## Photo viewer + unclassified titles update
 
-Settings now includes **Export PPTX**. It builds a local PowerPoint slideshow from the notes and photos stored in the app.
-
-- Includes one title slide.
-- Includes one or more slides for every talk/poster/unclassified group that has notes or photos.
-- Notes appear as text boxes.
-- Photos are embedded into the deck as JPEGs, up to 1600 px max side.
-- The slideshow is created fully inside the browser from local IndexedDB/localStorage data. No upload or server is involved.
-
-JSON export/import remains separate. Photos are still not added to JSON backups.
+- Opened photos now fit entirely inside the phone screen in the full-screen viewer, regardless of portrait or landscape orientation.
+- Unclassified photos can now have individual custom titles. Open an unclassified photo from Gallery and edit the **Photo title** field below the image. It saves automatically.
+- The custom title is shown beneath the unclassified thumbnail in Gallery.
+- PowerPoint export uses each unclassified photo's custom title as its slide title.
+- Existing notes, Gallery import, timestamp suggestions and local IndexedDB photo storage remain unchanged.
 
 ## Deployment
 Replace `index.html`, `app.js`, `styles.css`, and `service-worker.js` in the repository root and commit to `main`. `README.md` is optional.

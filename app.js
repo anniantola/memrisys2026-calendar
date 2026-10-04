@@ -150,6 +150,26 @@
     });
   }
 
+  async function updatePhotoTitle(photoId, title) {
+    const db = await openPhotoDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(PHOTO_STORE, "readwrite");
+      const store = tx.objectStore(PHOTO_STORE);
+      const req = store.get(Number(photoId));
+      req.onsuccess = () => {
+        const photo = req.result;
+        if (!photo) return;
+        const clean = String(title || "").trim();
+        if (clean) photo.customTitle = clean;
+        else delete photo.customTitle;
+        store.put(photo);
+      };
+      req.onerror = () => reject(req.error);
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  }
+
   async function deletePhoto(photoId) {
     const db = await openPhotoDb();
     return new Promise((resolve, reject) => {
@@ -614,21 +634,24 @@
       target.innerHTML = ordered.map(group => {
         const first = group[0];
         const info = galleryOwnerDetails(first);
+        const unclassifiedGroup = first.ownerType === "unclassified";
         const thumbs = group.map(photo => {
           const url = URL.createObjectURL(photo.thumbnailBlob || photo.blob);
           galleryObjectUrls.push(url);
           const stamp = photo.captureTime || "";
-          return `<div class="gallery-thumb-item">
-            <button class="gallery-thumb" type="button" data-gallery-photo="${photo.id}" aria-label="Open photo">
+          const customTitle = String(photo.customTitle || "").trim();
+          return `<div class="gallery-thumb-item${photo.ownerType === "unclassified" ? " gallery-thumb-item-titled" : ""}">
+            <button class="gallery-thumb" type="button" data-gallery-photo="${photo.id}" aria-label="Open photo${customTitle ? `: ${esc(customTitle)}` : ""}">
               <img src="${url}" alt="Conference photo thumbnail" loading="lazy">
               ${stamp ? `<span class="gallery-thumb-time">${esc(stamp)}</span>` : ""}
             </button>
             <button class="gallery-delete" type="button" data-gallery-delete="${photo.id}" aria-label="Delete photo">×</button>
+            ${photo.ownerType === "unclassified" ? `<div class="gallery-thumb-title">${esc(customTitle || "Untitled photo")}</div>` : ""}
           </div>`;
         }).join("");
-        return `<section class="gallery-group">
+        return `<section class="gallery-group${unclassifiedGroup ? " gallery-group-unclassified" : ""}">
           <button class="gallery-group-head" type="button" data-gallery-owner-type="${esc(first.ownerType)}" data-gallery-owner-id="${esc(first.ownerId)}">
-            <span class="gallery-group-copy"><strong>${esc(info.title)}</strong><small>${esc(info.meta)}</small></span>
+            <span class="gallery-group-copy"><strong>${esc(info.title)}</strong><small>${esc(unclassifiedGroup ? "Tap a photo to view it and edit its title" : info.meta)}</small></span>
             <span class="gallery-group-count">${group.length}</span>
           </button>
           <div class="gallery-thumb-grid">${thumbs}</div>
@@ -714,6 +737,14 @@
       const url = URL.createObjectURL(photo.blob);
       img.src = url;
       img.dataset.objectUrl = url;
+
+      const titleBar = $("#photoViewerTitleBar");
+      const titleInput = $("#photoViewerTitle");
+      const isUnclassified = photo.ownerType === "unclassified";
+      titleBar.hidden = !isUnclassified;
+      titleInput.value = isUnclassified ? String(photo.customTitle || "") : "";
+      titleInput.dataset.photoId = isUnclassified ? String(photo.id) : "";
+
       $("#photoViewer").showModal();
     } catch {
       toast("Could not open photo");
@@ -728,6 +759,11 @@
     if (url) URL.revokeObjectURL(url);
     img.removeAttribute("src");
     delete img.dataset.objectUrl;
+    const titleBar = $("#photoViewerTitleBar");
+    const titleInput = $("#photoViewerTitle");
+    titleBar.hidden = true;
+    titleInput.value = "";
+    titleInput.dataset.photoId = "";
   }
 
   function conferenceNowParts() {
@@ -1155,7 +1191,25 @@
 
     const photos = await getAllPhotos();
     for (const photo of photos) {
-      ensure(photo.ownerType || "event", photo.ownerId || "").photos.push(photo);
+      if ((photo.ownerType || "") === "unclassified") {
+        const title = String(photo.customTitle || "").trim() || "Unclassified photo";
+        const stamp = [photo.captureDate, photo.captureTime].filter(Boolean).join(" · ");
+        const key = `unclassified-photo:${photo.id}`;
+        map.set(key, {
+          key,
+          type:"unclassified",
+          id:String(photo.id),
+          info:{
+            title,
+            meta: stamp ? `${stamp} · Unclassified` : "Unclassified photo",
+            sortKey:`9999|unclassified|${String(photo.captureDate || "")}|${String(photo.captureTime || "")}|${String(photo.id).padStart(8,"0")}`
+          },
+          note:"",
+          photos:[photo]
+        });
+      } else {
+        ensure(photo.ownerType || "event", photo.ownerId || "").photos.push(photo);
+      }
     }
 
     return [...map.values()]
@@ -1638,6 +1692,34 @@
       e.target.value = "";
     });
     $("#photoViewerClose").addEventListener("click", closePhotoViewer);
+    let photoTitleSaveTimer = null;
+    $("#photoViewerTitle").addEventListener("input", e => {
+      const photoId = e.target.dataset.photoId;
+      if (!photoId) return;
+      clearTimeout(photoTitleSaveTimer);
+      photoTitleSaveTimer = setTimeout(async () => {
+        try {
+          await updatePhotoTitle(photoId, e.target.value);
+          await renderGallery();
+        } catch (err) {
+          console.error(err);
+          toast("Could not save photo title");
+        }
+      }, 250);
+    });
+    $("#photoViewerTitle").addEventListener("change", async e => {
+      const photoId = e.target.dataset.photoId;
+      if (!photoId) return;
+      clearTimeout(photoTitleSaveTimer);
+      try {
+        await updatePhotoTitle(photoId, e.target.value);
+        await renderGallery();
+        toast("Photo title saved");
+      } catch (err) {
+        console.error(err);
+        toast("Could not save photo title");
+      }
+    });
     $("#photoViewer").addEventListener("click", e => {
       if (e.target === $("#photoViewer")) closePhotoViewer();
     });
