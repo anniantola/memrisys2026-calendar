@@ -1,17 +1,16 @@
 # MEMRISYS 2026 Conference Calendar
 
-## Presentation notes update
+## PowerPoint export update
 
-Each talk and poster now has a **Notes** section in its detail view.
+Settings now includes **Export PPTX**. It builds a local PowerPoint slideshow from the notes and photos stored in the app.
 
-- Tap a presentation or poster and type directly into the Notes box.
-- Notes save automatically on this device.
-- Notes are stored in the same local app state as favorites/settings.
-- Notes are included in the app's JSON export/import backup.
-- Clearing starred items does not delete notes.
-- The Notes field follows light/dark mode, including white text in dark mode.
+- Includes one title slide.
+- Includes one or more slides for every talk/poster/unclassified group that has notes or photos.
+- Notes appear as text boxes.
+- Photos are embedded into the deck as JPEGs, up to 1600 px max side.
+- The slideshow is created fully inside the browser from local IndexedDB/localStorage data. No upload or server is involved.
 
-Existing Gallery, photo matching, thumbnails and Unclassified photo handling remain unchanged.
+JSON export/import remains separate. Photos are still not added to JSON backups.
 
 ## Deployment
-Replace `app.js`, `styles.css`, and `service-worker.js` in the repository root and commit to `main`. `README.md` is optional.
+Replace `index.html`, `app.js`, `styles.css`, and `service-worker.js` in the repository root and commit to `main`. `README.md` is optional.

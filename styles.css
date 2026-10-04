@@ -273,3 +273,6 @@ html.compact .time-group{gap:5px}
 .presentation-note:focus{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
 html[data-theme="dark"] .presentation-note{background:var(--surface-2);color:#fff;caret-color:#fff}
 html[data-theme="dark"] .presentation-note::placeholder{color:var(--muted)}
+
+/* PowerPoint export button */
+#exportPptxBtn:disabled{opacity:.65;cursor:wait}

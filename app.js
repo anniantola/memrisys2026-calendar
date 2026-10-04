@@ -1067,6 +1067,374 @@
     clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),1800);
   }
 
+
+  function xmlEsc(v="") {
+    return String(v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  }
+
+  function safeFilenamePart(v="") {
+    return String(v).replace(/[^a-z0-9]+/gi,"-").replace(/^-+|-+$/g,"").slice(0,42) || "memrisys";
+  }
+
+  function emu(inches) {
+    return Math.round(inches * 914400);
+  }
+
+  function textToParagraphs(text, fontSize=1400, bold=false, color="1f2937") {
+    const lines = String(text || "").replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+    const safeLines = lines.length ? lines : [""];
+    return safeLines.map(line => `<a:p><a:r><a:rPr lang="en-US" sz="${fontSize}" ${bold?'b="1" ':""}><a:solidFill><a:srgbClr val="${color}"/></a:solidFill></a:rPr><a:t>${xmlEsc(line || " ")}</a:t></a:r><a:endParaRPr lang="en-US" sz="${fontSize}"/></a:p>`).join("");
+  }
+
+  function pptTextShape(shapeId, name, x, y, w, h, text, opts={}) {
+    const fontSize = opts.fontSize || 1400;
+    const bold = !!opts.bold;
+    const color = opts.color || "1f2937";
+    const fill = opts.fill ? `<a:solidFill><a:srgbClr val="${opts.fill}"/></a:solidFill>` : `<a:noFill/>`;
+    const line = opts.line ? `<a:ln><a:solidFill><a:srgbClr val="${opts.line}"/></a:solidFill></a:ln>` : `<a:ln><a:noFill/></a:ln>`;
+    return `<p:sp><p:nvSpPr><p:cNvPr id="${shapeId}" name="${xmlEsc(name)}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${emu(x)}" y="${emu(y)}"/><a:ext cx="${emu(w)}" cy="${emu(h)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fill}${line}</p:spPr><p:txBody><a:bodyPr wrap="square" lIns="91440" tIns="68580" rIns="91440" bIns="68580" anchor="t"/><a:lstStyle/>${textToParagraphs(text,fontSize,bold,color)}</p:txBody></p:sp>`;
+  }
+
+  function pptPicture(picId, relId, x, y, w, h, name="Photo") {
+    return `<p:pic><p:nvPicPr><p:cNvPr id="${picId}" name="${xmlEsc(name)}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${relId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${emu(x)}" y="${emu(y)}"/><a:ext cx="${emu(w)}" cy="${emu(h)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:ln><a:solidFill><a:srgbClr val="d1d5db"/></a:solidFill></a:ln></p:spPr></p:pic>`;
+  }
+
+  function fitInBox(imgW, imgH, x, y, w, h) {
+    const ratio = Math.min(w / imgW, h / imgH);
+    const outW = imgW * ratio;
+    const outH = imgH * ratio;
+    return {x:x+(w-outW)/2, y:y+(h-outH)/2, w:outW, h:outH};
+  }
+
+  function ownerInfoForExport(type, id) {
+    if (type === "unclassified") {
+      return {title:"Unclassified photos", meta:"Photos without a matching conference session", sortKey:"9999|unclassified"};
+    }
+    if (type === "poster") {
+      const p = posterById.get(id);
+      if (!p) return {title:"Poster", meta:"Poster session", sortKey:"9999|poster"};
+      return {
+        title:`Poster #${p.number} · ${p.title}`,
+        meta:`Tuesday 6 October · 18:00–20:00 · Staatsarchiv · ${p.author || ""}`,
+        sortKey:`2026-10-06|18:00|${String(p.number || 999).padStart(3,"0")}`
+      };
+    }
+    const e = byId.get(id);
+    if (!e) return {title:"Programme item", meta:"", sortKey:"9999|event"};
+    const person = e.speaker ? ` · ${e.speaker}` : "";
+    const room = e.room ? ` · ${e.room}` : "";
+    return {
+      title:e.title,
+      meta:`${e.weekday} ${e.dateLabel} · ${e.start}–${e.end}${room}${person}`,
+      sortKey:`${e.date}|${e.start}|${e.track || 0}`
+    };
+  }
+
+  function parseOwnerKey(key) {
+    const idx = String(key).indexOf(":");
+    if (idx < 0) return {type:"event", id:key};
+    return {type:key.slice(0,idx), id:key.slice(idx+1)};
+  }
+
+  async function collectNotesPhotosForPptx() {
+    const map = new Map();
+    const ensure = (type, id) => {
+      const key = photoOwnerKey(type,id);
+      if (!map.has(key)) {
+        const info = ownerInfoForExport(type,id);
+        map.set(key, {key, type, id, info, note:getNote(type,id), photos:[]});
+      }
+      return map.get(key);
+    };
+
+    for (const [key,value] of Object.entries(state.notes || {})) {
+      if (!String(value || "").trim()) continue;
+      const {type,id} = parseOwnerKey(key);
+      ensure(type,id).note = String(value || "");
+    }
+
+    const photos = await getAllPhotos();
+    for (const photo of photos) {
+      ensure(photo.ownerType || "event", photo.ownerId || "").photos.push(photo);
+    }
+
+    return [...map.values()]
+      .filter(item => String(item.note || "").trim() || item.photos.length)
+      .sort((a,b)=>a.info.sortKey.localeCompare(b.info.sortKey));
+  }
+
+  async function imageBlobForPptx(photo) {
+    const source = photo.blob || photo.thumbnailBlob;
+    if (!source) throw new Error("Missing image blob");
+    const bitmap = await createImageBitmap(source);
+    const maxSide = 1600;
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0,0,width,height);
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+    const blob = await new Promise((resolve, reject) => canvas.toBlob(
+      out => out ? resolve(out) : reject(new Error("Could not prepare image for PowerPoint")),
+      "image/jpeg", 0.86
+    ));
+    return {blob, width, height};
+  }
+
+  async function blobToU8(blob) {
+    return new Uint8Array(await blob.arrayBuffer());
+  }
+
+  function strToU8(text) {
+    return new TextEncoder().encode(text);
+  }
+
+  function crc32(data) {
+    if (!crc32.table) {
+      const table = new Uint32Array(256);
+      for (let i=0;i<256;i++) {
+        let c=i;
+        for (let k=0;k<8;k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+        table[i]=c>>>0;
+      }
+      crc32.table=table;
+    }
+    let c=0xffffffff;
+    for (let i=0;i<data.length;i++) c=crc32.table[(c ^ data[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  function writeU16(view, offset, value) { view.setUint16(offset, value, true); }
+  function writeU32(view, offset, value) { view.setUint32(offset, value >>> 0, true); }
+
+  function concatU8(parts) {
+    const total = parts.reduce((sum,p)=>sum+p.length,0);
+    const out = new Uint8Array(total);
+    let offset=0;
+    for (const part of parts) { out.set(part,offset); offset += part.length; }
+    return out;
+  }
+
+  function dosDateTime(date=new Date()) {
+    const time = ((date.getHours() & 31) << 11) | ((date.getMinutes() & 63) << 5) | Math.floor(date.getSeconds()/2);
+    const day = ((date.getFullYear()-1980) << 9) | ((date.getMonth()+1) << 5) | date.getDate();
+    return {time, day};
+  }
+
+  function makeZip(files) {
+    const now = dosDateTime();
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+
+    for (const file of files) {
+      const name = strToU8(file.name);
+      const data = file.data instanceof Uint8Array ? file.data : strToU8(file.data);
+      const crc = crc32(data);
+      const local = new Uint8Array(30 + name.length);
+      const lv = new DataView(local.buffer);
+      writeU32(lv,0,0x04034b50); writeU16(lv,4,20); writeU16(lv,6,0x0800); writeU16(lv,8,0);
+      writeU16(lv,10,now.time); writeU16(lv,12,now.day); writeU32(lv,14,crc);
+      writeU32(lv,18,data.length); writeU32(lv,22,data.length); writeU16(lv,26,name.length); writeU16(lv,28,0);
+      local.set(name,30);
+      localParts.push(local,data);
+
+      const central = new Uint8Array(46 + name.length);
+      const cv = new DataView(central.buffer);
+      writeU32(cv,0,0x02014b50); writeU16(cv,4,20); writeU16(cv,6,20); writeU16(cv,8,0x0800); writeU16(cv,10,0);
+      writeU16(cv,12,now.time); writeU16(cv,14,now.day); writeU32(cv,16,crc);
+      writeU32(cv,20,data.length); writeU32(cv,24,data.length); writeU16(cv,28,name.length); writeU16(cv,30,0); writeU16(cv,32,0);
+      writeU16(cv,34,0); writeU16(cv,36,0); writeU32(cv,38,0); writeU32(cv,42,offset);
+      central.set(name,46);
+      centralParts.push(central);
+      offset += local.length + data.length;
+    }
+
+    const centralStart = offset;
+    const centralData = concatU8(centralParts);
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    writeU32(ev,0,0x06054b50); writeU16(ev,4,0); writeU16(ev,6,0); writeU16(ev,8,files.length); writeU16(ev,10,files.length);
+    writeU32(ev,12,centralData.length); writeU32(ev,16,centralStart); writeU16(ev,20,0);
+    return new Blob([concatU8(localParts), centralData, eocd], {type:"application/vnd.openxmlformats-officedocument.presentationml.presentation"});
+  }
+
+  function contentTypesXml(slideCount) {
+    let overrides = `<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"/><Override PartName="/ppt/viewProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"/><Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/><Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>`;
+    for (let i=1;i<=slideCount;i++) overrides += `<Override PartName="/ppt/slides/slide${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`;
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Default Extension="jpeg" ContentType="image/jpeg"/>${overrides}</Types>`;
+  }
+
+  function rootRelsXml() {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/></Relationships>`;
+  }
+
+  function presentationXml(slideCount) {
+    let ids = "";
+    for (let i=1;i<=slideCount;i++) ids += `<p:sldId id="${255+i}" r:id="rId${i+1}"/>`;
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>${ids}</p:sldIdLst><p:sldSz cx="12192000" cy="6858000" type="wide"/><p:notesSz cx="6858000" cy="9144000"/><p:defaultTextStyle/></p:presentation>`;
+  }
+
+  function presentationRelsXml(slideCount) {
+    let rels = `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>`;
+    for (let i=1;i<=slideCount;i++) rels += `<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i}.xml"/>`;
+    const base = slideCount + 2;
+    rels += `<Relationship Id="rId${base}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps" Target="presProps.xml"/><Relationship Id="rId${base+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps" Target="viewProps.xml"/><Relationship Id="rId${base+2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles" Target="tableStyles.xml"/>`;
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels}</Relationships>`;
+  }
+
+  function slideXml(shapes) {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>${shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
+  }
+
+  function slideRelsXml(imageRels) {
+    let rels = `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>`;
+    for (const rel of imageRels) rels += `<Relationship Id="${rel.rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${rel.file}"/>`;
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels}</Relationships>`;
+  }
+
+  function slideMasterXml() {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle/><p:bodyStyle/><p:otherStyle/></p:txStyles></p:sldMaster>`;
+  }
+
+  function slideLayoutXml() {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1"><p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`;
+  }
+
+  function themeXml() {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Memrisys"><a:themeElements><a:clrScheme name="Memrisys"><a:dk1><a:srgbClr val="111827"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="1f2937"/></a:dk2><a:lt2><a:srgbClr val="f3f4f6"/></a:lt2><a:accent1><a:srgbClr val="1769E0"/></a:accent1><a:accent2><a:srgbClr val="9B5B08"/></a:accent2><a:accent3><a:srgbClr val="58A56C"/></a:accent3><a:accent4><a:srgbClr val="E7A400"/></a:accent4><a:accent5><a:srgbClr val="73767C"/></a:accent5><a:accent6><a:srgbClr val="000000"/></a:accent6><a:hlink><a:srgbClr val="1769E0"/></a:hlink><a:folHlink><a:srgbClr val="1769E0"/></a:folHlink></a:clrScheme><a:fontScheme name="Aptos"><a:majorFont><a:latin typeface="Aptos Display"/></a:majorFont><a:minorFont><a:latin typeface="Aptos"/></a:minorFont></a:fontScheme><a:fmtScheme name="Memrisys"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>`;
+  }
+
+  async function makeMemrisysPptx(items) {
+    const files = [];
+    const slideData = [];
+    const mediaFiles = [];
+    let mediaIndex = 1;
+
+    const addSlide = (shapes, imageRels=[]) => slideData.push({shapes, imageRels});
+
+    const noteCount = items.filter(x=>String(x.note||"").trim()).length;
+    const photoCount = items.reduce((sum,x)=>sum+x.photos.length,0);
+    addSlide(
+      pptTextShape(2,"Title",0.7,0.75,12,0.75,"MEMRISYS 2026",{fontSize:3600,bold:true,color:"111827"}) +
+      pptTextShape(3,"Subtitle",0.75,1.65,11.8,0.65,"Notes and presentation photos",{fontSize:2200,color:"1769E0"}) +
+      pptTextShape(4,"Summary",0.8,2.75,11.6,2.2,`${items.length} presentations / groups\n${noteCount} with notes\n${photoCount} photos\nExported ${new Date().toLocaleString()}`,{fontSize:1700,color:"374151",fill:"f3f4f6",line:"d1d5db"}) +
+      pptTextShape(5,"Footer",0.8,6.65,11.6,0.35,"Generated locally from the MEMRISYS 2026 app",{fontSize:1000,color:"6b7280"})
+    );
+
+    for (const item of items) {
+      const prepared = [];
+      for (const photo of item.photos) {
+        try {
+          const img = await imageBlobForPptx(photo);
+          const file = `image${mediaIndex++}.jpg`;
+          mediaFiles.push({name:`ppt/media/${file}`, data: await blobToU8(img.blob)});
+          prepared.push({...img, file, caption: photo.captureTime || photo.name || "Photo"});
+        } catch (err) {
+          console.warn("Skipping photo in PPTX export", err);
+        }
+      }
+
+      const chunks = [];
+      if (prepared.length) {
+        for (let i=0;i<prepared.length;i+=4) chunks.push(prepared.slice(i,i+4));
+      } else {
+        chunks.push([]);
+      }
+
+      chunks.forEach((chunk, chunkIndex) => {
+        let shapeId = 2;
+        let shapes = "";
+        const imageRels = [];
+        const title = chunkIndex ? `${item.info.title} — photos ${chunkIndex*4+1}–${chunkIndex*4+chunk.length}` : item.info.title;
+        shapes += pptTextShape(shapeId++,"Title",0.42,0.25,12.5,0.45,title,{fontSize:1900,bold:true,color:"111827"});
+        shapes += pptTextShape(shapeId++,"Meta",0.45,0.73,12.35,0.35,item.info.meta,{fontSize:900,color:"6b7280"});
+
+        const hasNote = String(item.note || "").trim() && chunkIndex === 0;
+        const noteText = hasNote ? item.note : (chunkIndex === 0 && !chunk.length ? "No photos attached." : "");
+        if (hasNote || !chunk.length) {
+          const noteW = chunk.length ? 5.1 : 12.15;
+          shapes += pptTextShape(shapeId++,"Notes",0.45,1.18,noteW,5.8,noteText,{fontSize:1150,color:"111827",fill:"f9fafb",line:"e5e7eb"});
+        }
+
+        if (chunk.length) {
+          const x0 = hasNote ? 5.85 : 0.65;
+          const y0 = 1.25;
+          const gridW = hasNote ? 6.9 : 12.0;
+          const gridH = 5.55;
+          const gap = 0.18;
+          const boxes = chunk.length === 1
+            ? [{x:x0,y:y0,w:gridW,h:gridH}]
+            : chunk.length === 2
+              ? [{x:x0,y:y0,w:gridW,h:(gridH-gap)/2},{x:x0,y:y0+(gridH+gap)/2,w:gridW,h:(gridH-gap)/2}]
+              : [0,1,2,3].map(i => ({x:x0+(i%2)*(gridW+gap)/2,y:y0+Math.floor(i/2)*(gridH+gap)/2,w:(gridW-gap)/2,h:(gridH-gap)/2}));
+
+          chunk.forEach((img, idx) => {
+            const box = boxes[idx];
+            const fit = fitInBox(img.width,img.height,box.x,box.y,box.w,box.h);
+            const rId = `rId${imageRels.length+2}`;
+            imageRels.push({rId, file:img.file});
+            shapes += pptPicture(shapeId++,rId,fit.x,fit.y,fit.w,fit.h,`Photo ${idx+1}`);
+            if (img.caption) shapes += pptTextShape(shapeId++,"Caption",box.x,box.y+box.h-0.23,box.w,0.22,img.caption,{fontSize:650,color:"4b5563",fill:"ffffff"});
+          });
+        }
+        addSlide(shapes, imageRels);
+      });
+    }
+
+    const slideCount = slideData.length;
+    files.push({name:"[Content_Types].xml", data:contentTypesXml(slideCount)});
+    files.push({name:"_rels/.rels", data:rootRelsXml()});
+    files.push({name:"ppt/presentation.xml", data:presentationXml(slideCount)});
+    files.push({name:"ppt/_rels/presentation.xml.rels", data:presentationRelsXml(slideCount)});
+    files.push({name:"ppt/presProps.xml", data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentationPr xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"/>`});
+    files.push({name:"ppt/viewProps.xml", data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:viewPr xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"/>`});
+    files.push({name:"ppt/tableStyles.xml", data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"/>`});
+    files.push({name:"ppt/theme/theme1.xml", data:themeXml()});
+    files.push({name:"ppt/slideMasters/slideMaster1.xml", data:slideMasterXml()});
+    files.push({name:"ppt/slideMasters/_rels/slideMaster1.xml.rels", data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/></Relationships>`});
+    files.push({name:"ppt/slideLayouts/slideLayout1.xml", data:slideLayoutXml()});
+    files.push({name:"ppt/slideLayouts/_rels/slideLayout1.xml.rels", data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>`});
+
+    slideData.forEach((slide, i) => {
+      const num = i+1;
+      files.push({name:`ppt/slides/slide${num}.xml`, data:slideXml(slide.shapes)});
+      files.push({name:`ppt/slides/_rels/slide${num}.xml.rels`, data:slideRelsXml(slide.imageRels)});
+    });
+    files.push(...mediaFiles);
+    return makeZip(files);
+  }
+
+  async function exportNotesPhotosPptx() {
+    const btn = $("#exportPptxBtn");
+    const original = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "Building…"; }
+    try {
+      const items = await collectNotesPhotosForPptx();
+      if (!items.length) {
+        toast("No notes or photos to export");
+        return;
+      }
+      const pptx = await makeMemrisysPptx(items);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(pptx);
+      a.download = `memrisys-2026-notes-photos-${new Date().toISOString().slice(0,10)}.pptx`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast("PowerPoint exported");
+    } catch (err) {
+      console.error(err);
+      toast("Could not export PowerPoint");
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = original || "Export PPTX"; }
+    }
+  }
+
   function exportState() {
     const payload = {version:1, exportedAt:new Date().toISOString(), state:{
       favorites:state.favorites, posterFavorites:state.posterFavorites,
@@ -1209,6 +1577,7 @@
       state.compact=!state.compact;saveState();applyTheme();syncSettings();
     });
     $("#exportBtn").addEventListener("click",exportState);
+    $("#exportPptxBtn").addEventListener("click",exportNotesPhotosPptx);
     $("#importBtn").addEventListener("click",()=>$("#importInput").click());
     $("#importInput").addEventListener("change",e=>{if(e.target.files[0])importState(e.target.files[0]);e.target.value="";});
     $("#installBtn").addEventListener("click", installApp);
