@@ -1,13 +1,12 @@
 # MEMRISYS 2026 Conference Calendar
 
-This update extends the presentation-photo feature with timestamp-based suggestions.
+This update moves photo importing into a dedicated **Gallery** page.
 
-## Photo import by time
-Open **My schedule** and tap **Import photos by time**. Select one or many existing photos from the phone. The app reads the JPEG camera capture timestamp (EXIF DateTimeOriginal) when available and otherwise falls back to the file modification date converted to Darmstadt time.
+The bottom navigation now includes **Gallery**. Timestamp-based **Import photos** lives there, and saved photos are shown as small thumbnails grouped under the talk or poster they belong to. New photos get a separate compressed thumbnail (maximum 360 px) in IndexedDB; photos saved by the previous photo version automatically get thumbnails the first time Gallery loads.
 
-Each photo is compared with the MEMRISYS programme. Presentations happening at the capture time are suggested first, and starred items are prioritized when parallel sessions overlap. Photos taken during the Tuesday poster session suggest starred posters first. Every suggestion is shown for review before anything is saved, and each photo can be reassigned to another programme item from that day or skipped.
+Tapping a thumbnail opens the full stored image. Tapping a group heading opens the corresponding talk/poster. Timestamp matching still prioritizes starred sessions and starred posters during the poster session. Manual **Add photos** inside presentation details still works.
 
-Photos continue to be stored locally in IndexedDB and are not included in the JSON backup. Manual **Add photos** from an individual talk/poster still works as before.
+Photos remain local in IndexedDB and are not included in the JSON backup.
 
 ## Deployment
-Replace `index.html`, `app.js`, `styles.css`, and `service-worker.js` in the repository root and commit to `main`. GitHub Actions will redeploy automatically.
+Replace `index.html`, `app.js`, `styles.css`, and `service-worker.js` in the repository root and commit to `main`. `README.md` is optional.

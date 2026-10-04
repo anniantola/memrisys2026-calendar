@@ -55,15 +55,32 @@
           </div>
           <span id="favoriteCount" class="count-badge">0</span>
         </div>
-        <div class="smart-photo-card">
-          <div>
-            <div class="eyebrow">CAMERA ROLL</div>
-            <strong>Match photos by capture time</strong>
-            <p>Select conference photos from your phone. The app compares their timestamps with the programme and suggests starred presentations first.</p>
-          </div>
-          <button id="smartPhotoImportBtn" class="secondary-btn" type="button">Import photos by time</button>
-        </div>
         <div id="mySchedule"></div>
+      </section>
+
+      <section id="galleryView" class="view" data-view="gallery">
+        <div class="view-heading">
+          <div>
+            <div class="eyebrow">PRESENTATION PHOTOS</div>
+            <h2>Gallery</h2>
+          </div>
+          <span id="galleryCount" class="count-badge">0</span>
+        </div>
+
+        <div class="gallery-import-card">
+          <div>
+            <strong>Import photos by time</strong>
+            <p>Select conference photos from your phone. Capture times are compared with the programme, with starred sessions suggested first.</p>
+          </div>
+          <button id="smartPhotoImportBtn" class="primary-btn" type="button">Import photos</button>
+        </div>
+
+        <div id="galleryMeta" class="section-meta">
+          <span>Stored locally on this device</span>
+        </div>
+        <div id="galleryContent" class="gallery-content">
+          <div class="photo-loading">Loading gallery…</div>
+        </div>
       </section>
 
       <section id="postersView" class="view" data-view="posters">
@@ -187,6 +204,7 @@
     <nav class="bottom-nav" aria-label="Main navigation">
       <button class="nav-btn active" data-target="program"><span class="nav-icon">▦</span><span>Program</span></button>
       <button class="nav-btn" data-target="my"><span class="nav-icon">★</span><span>My schedule</span></button>
+      <button class="nav-btn" data-target="gallery"><span class="nav-icon">▧</span><span>Gallery</span></button>
       <button class="nav-btn" data-target="posters"><span class="nav-icon">▤</span><span>Posters</span></button>
       <button class="nav-btn" data-target="settings"><span class="nav-icon">⚙</span><span>Settings</span></button>
     </nav>

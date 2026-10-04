@@ -23,6 +23,8 @@
   let currentModal = null;
   let deferredInstallPrompt = null;
   let pendingPhotoImports = [];
+  let galleryObjectUrls = [];
+  let modalPhotoObjectUrls = [];
 
   function loadState() {
     try {
@@ -72,8 +74,20 @@
     });
   }
 
+  async function getAllPhotos() {
+    const db = await openPhotoDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(PHOTO_STORE, "readonly");
+      const req = tx.objectStore(PHOTO_STORE).getAll();
+      req.onsuccess = () => resolve((req.result || []).sort((x,y)=>(x.addedAt||0)-(y.addedAt||0)));
+      req.onerror = () => reject(req.error);
+      tx.oncomplete = () => db.close();
+    });
+  }
+
   async function storePhoto(type, id, file, metadata={}) {
     const blob = await prepareImageBlob(file);
+    const thumbnailBlob = await prepareThumbnailBlob(blob);
     const db = await openPhotoDb();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(PHOTO_STORE, "readwrite");
@@ -88,6 +102,7 @@
         captureTime: metadata.captureTime || null,
         timestampSource: metadata.timestampSource || null,
         addedAt: Date.now(),
+        thumbnailBlob,
         blob
       });
       req.onsuccess = () => resolve(req.result);
@@ -138,6 +153,54 @@
     } catch {
       return file;
     }
+  }
+
+  async function prepareThumbnailBlob(blob) {
+    try {
+      const bitmap = await createImageBitmap(blob);
+      const maxSide = 360;
+      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close?.();
+      return await new Promise((resolve, reject) => canvas.toBlob(
+        out => out ? resolve(out) : reject(new Error("Thumbnail conversion failed")),
+        "image/jpeg", 0.72
+      ));
+    } catch {
+      return blob;
+    }
+  }
+
+  async function persistPhotoThumbnail(photoId, thumbnailBlob) {
+    const db = await openPhotoDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(PHOTO_STORE, "readwrite");
+      const store = tx.objectStore(PHOTO_STORE);
+      const req = store.get(Number(photoId));
+      req.onsuccess = () => {
+        const photo = req.result;
+        if (photo && !photo.thumbnailBlob) {
+          photo.thumbnailBlob = thumbnailBlob;
+          store.put(photo);
+        }
+      };
+      req.onerror = () => reject(req.error);
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  }
+
+  async function ensurePhotoThumbnail(photo) {
+    if (photo.thumbnailBlob) return photo.thumbnailBlob;
+    const thumbnailBlob = await prepareThumbnailBlob(photo.blob);
+    photo.thumbnailBlob = thumbnailBlob;
+    try { await persistPhotoThumbnail(photo.id, thumbnailBlob); } catch {}
+    return thumbnailBlob;
   }
 
   function readAscii(view, offset, length) {
@@ -428,6 +491,7 @@
       }
       const skipped = pendingPhotoImports.length - saveItems.length;
       closePhotoImportDialog();
+      await renderGallery();
       toast(skipped ? `${saveItems.length} saved · ${skipped} skipped` : `${saveItems.length} photo${saveItems.length===1?"":"s"} assigned`);
     } catch (err) {
       console.error(err);
@@ -435,6 +499,89 @@
     } finally {
       const btn = $("#photoImportSave");
       if (btn) btn.disabled = false;
+    }
+  }
+
+  function galleryOwnerDetails(photo) {
+    if (photo.ownerType === "poster") {
+      const p = posterById.get(photo.ownerId);
+      return {
+        title: p ? `Poster #${p.number} · ${p.title}` : "Poster",
+        meta: "Tuesday 6 October · 18:00–20:00 · Staatsarchiv",
+        sortKey: `2026-10-06|18:00|${String(p?.number || 999).padStart(3,"0")}`
+      };
+    }
+    const e = byId.get(photo.ownerId);
+    if (!e) return {title:"Programme item", meta:"", sortKey:"9999"};
+    const room = e.room ? ` · ${e.room}` : "";
+    return {
+      title: e.title,
+      meta: `${e.weekday} ${e.dateLabel} · ${e.start}–${e.end}${room}`,
+      sortKey: `${e.date}|${e.start}|${e.track || 0}`
+    };
+  }
+
+  function clearGalleryObjectUrls() {
+    galleryObjectUrls.forEach(url => URL.revokeObjectURL(url));
+    galleryObjectUrls = [];
+  }
+
+  function clearModalPhotoObjectUrls() {
+    modalPhotoObjectUrls.forEach(url => URL.revokeObjectURL(url));
+    modalPhotoObjectUrls = [];
+  }
+
+  async function renderGallery() {
+    const target = $("#galleryContent");
+    const count = $("#galleryCount");
+    const meta = $("#galleryMeta");
+    if (!target || !count || !meta) return;
+    clearGalleryObjectUrls();
+    target.innerHTML = `<div class="photo-loading">Loading gallery…</div>`;
+    try {
+      const photos = await getAllPhotos();
+      for (const photo of photos) {
+        if (!photo.thumbnailBlob) await ensurePhotoThumbnail(photo);
+      }
+      count.textContent = photos.length;
+      meta.innerHTML = `<span>${photos.length} photo${photos.length===1?"":"s"}</span><span>Stored locally on this device</span>`;
+      if (!photos.length) {
+        target.innerHTML = `<div class="empty-state"><strong>No photos yet</strong>Import conference photos by time, or add them from an individual talk or poster.</div>`;
+        return;
+      }
+      const groups = new Map();
+      for (const photo of photos) {
+        if (!groups.has(photo.ownerKey)) groups.set(photo.ownerKey, []);
+        groups.get(photo.ownerKey).push(photo);
+      }
+      const ordered = [...groups.values()].sort((x,y) => galleryOwnerDetails(x[0]).sortKey.localeCompare(galleryOwnerDetails(y[0]).sortKey));
+      target.innerHTML = ordered.map(group => {
+        const first = group[0];
+        const info = galleryOwnerDetails(first);
+        const thumbs = group.map(photo => {
+          const url = URL.createObjectURL(photo.thumbnailBlob || photo.blob);
+          galleryObjectUrls.push(url);
+          const stamp = photo.captureTime || "";
+          return `<div class="gallery-thumb-item">
+            <button class="gallery-thumb" type="button" data-gallery-photo="${photo.id}" aria-label="Open photo">
+              <img src="${url}" alt="Conference photo thumbnail" loading="lazy">
+              ${stamp ? `<span class="gallery-thumb-time">${esc(stamp)}</span>` : ""}
+            </button>
+            <button class="gallery-delete" type="button" data-gallery-delete="${photo.id}" aria-label="Delete photo">×</button>
+          </div>`;
+        }).join("");
+        return `<section class="gallery-group">
+          <button class="gallery-group-head" type="button" data-gallery-owner-type="${esc(first.ownerType)}" data-gallery-owner-id="${esc(first.ownerId)}">
+            <span class="gallery-group-copy"><strong>${esc(info.title)}</strong><small>${esc(info.meta)}</small></span>
+            <span class="gallery-group-count">${group.length}</span>
+          </button>
+          <div class="gallery-thumb-grid">${thumbs}</div>
+        </section>`;
+      }).join("");
+    } catch (err) {
+      console.error(err);
+      count.textContent = "0";
+      target.innerHTML = `<div class="photo-empty">Could not load the gallery on this device.</div>`;
     }
   }
 
@@ -452,6 +599,7 @@
   async function renderModalPhotos() {
     const target = $("#modalPhotos");
     if (!target || !currentModal) return;
+    clearModalPhotoObjectUrls();
     target.innerHTML = `<div class="photo-loading">Loading…</div>`;
     try {
       const photos = await getPhotos(currentModal.type, currentModal.id);
@@ -459,11 +607,15 @@
         target.innerHTML = `<div class="photo-empty">No photos attached yet.</div>`;
         return;
       }
+      for (const photo of photos) {
+        if (!photo.thumbnailBlob) await ensurePhotoThumbnail(photo);
+      }
       target.innerHTML = photos.map(p => {
-        const url = URL.createObjectURL(p.blob);
+        const url = URL.createObjectURL(p.thumbnailBlob || p.blob);
+        modalPhotoObjectUrls.push(url);
         return `<div class="photo-item">
-          <button class="photo-thumb" type="button" data-photo-id="${p.id}" data-photo-url="${url}" aria-label="Open photo">
-            <img src="${url}" alt="Presentation photo">
+          <button class="photo-thumb" type="button" data-photo-id="${p.id}" aria-label="Open photo">
+            <img src="${url}" alt="Presentation photo thumbnail" loading="lazy">
           </button>
           <button class="photo-delete" type="button" data-photo-delete="${p.id}" aria-label="Delete photo">×</button>
         </div>`;
@@ -488,6 +640,7 @@
         });
       }
       await renderModalPhotos();
+      renderGallery();
       toast(images.length === 1 ? "Photo added" : `${images.length} photos added`);
     } catch (err) {
       console.error(err);
@@ -846,6 +999,7 @@
     $$(".view").forEach(v => v.classList.toggle("active",v.dataset.view===name));
     $$(".nav-btn").forEach(b => b.classList.toggle("active",b.dataset.target===name));
     if (name==="my") renderMySchedule();
+    if (name==="gallery") renderGallery();
     if (name==="posters") renderPosters();
     window.scrollTo({top:0,behavior:"smooth"});
   }
@@ -959,6 +1113,25 @@
     $("#photoImportClose").addEventListener("click",closePhotoImportDialog);
     $("#photoImportDialog").addEventListener("click",e=>{ if(e.target===$("#photoImportDialog")) closePhotoImportDialog(); });
 
+    $("#galleryContent").addEventListener("click", async e => {
+      const del = e.target.closest("[data-gallery-delete]");
+      if (del) {
+        e.stopPropagation();
+        if (confirm("Delete this photo from the presentation?")) {
+          await deletePhoto(del.dataset.galleryDelete);
+          await renderGallery();
+          toast("Photo deleted");
+        }
+        return;
+      }
+      const thumb = e.target.closest("[data-gallery-photo]");
+      if (thumb) { openStoredPhoto(thumb.dataset.galleryPhoto); return; }
+      const owner = e.target.closest("[data-gallery-owner-type]");
+      if (owner) {
+        owner.dataset.galleryOwnerType === "poster" ? openPoster(owner.dataset.galleryOwnerId) : openEvent(owner.dataset.galleryOwnerId);
+      }
+    });
+
     $("#nowBtn").addEventListener("click",()=>{
       state.day=detectConferenceDay(); saveState(); renderDays(); renderProgram(); showView("program");
     });
@@ -992,6 +1165,7 @@
         if (confirm("Delete this photo from the presentation?")) {
           await deletePhoto(delBtn.dataset.photoDelete);
           await renderModalPhotos();
+          renderGallery();
           toast("Photo deleted");
         }
         return;
@@ -1028,6 +1202,7 @@
     renderProgram();
     renderPosters();
     renderMySchedule();
+    renderGallery();
     showView(state.view || "program");
     updateInstallUI();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js", { scope: "./", updateViaCache: "none" }).catch(()=>{});
