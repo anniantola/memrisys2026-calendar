@@ -1,16 +1,13 @@
 # MEMRISYS 2026 Conference Calendar
 
-Fresh GitHub Pages deployment.
+This version adds a first, deliberately simple presentation-photo feature.
 
-Repository name expected by the PWA manifest:
-`memrisys2026-calendar`
+## Photo feature
+Open any talk or poster and tap **Add photos** to choose one or more existing images from the phone. The selected images are stored locally in IndexedDB and attached to that exact presentation. Tapping a thumbnail opens it full-screen; the × on a thumbnail deletes it.
 
-Published URL:
-`https://anniantola.github.io/memrisys2026-calendar/`
+Large images are resized/compressed in the browser to reduce storage use. Photos are device-local and are **not yet included in the JSON backup**.
 
-Deployment:
-Settings → Pages → Source → GitHub Actions
+Automatic assignment by photo timestamp is intentionally not included in this first version.
 
-The app includes the four-day conference programme, poster list, poster abstracts,
-search, room filters, favourites/My Schedule, dark mode, local persistence,
-JSON export/import, and PWA installation support.
+## Deployment
+Replace `index.html`, `app.js`, `styles.css`, and `service-worker.js` in the repository root and commit to `main`. GitHub Actions will redeploy automatically.

@@ -2,6 +2,8 @@
 (() => {
   const DATA = window.CONFERENCE_DATA;
   const STORAGE_KEY = "memristorCalendarStateV1";
+  const PHOTO_DB = "memrisysPhotoDB";
+  const PHOTO_STORE = "photos";
   const defaultState = {
     favorites: [],
     posterFavorites: [],
@@ -37,6 +39,177 @@
 
   function esc(v="") {
     return String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+  }
+
+  function openPhotoDb() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(PHOTO_DB, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(PHOTO_STORE)) {
+          const store = db.createObjectStore(PHOTO_STORE, {keyPath:"id", autoIncrement:true});
+          store.createIndex("ownerKey", "ownerKey", {unique:false});
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  function photoOwnerKey(type, id) {
+    return `${type}:${id}`;
+  }
+
+  async function getPhotos(type, id) {
+    const db = await openPhotoDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(PHOTO_STORE, "readonly");
+      const req = tx.objectStore(PHOTO_STORE).index("ownerKey").getAll(photoOwnerKey(type,id));
+      req.onsuccess = () => resolve((req.result || []).sort((a,b)=>(a.addedAt||0)-(b.addedAt||0)));
+      req.onerror = () => reject(req.error);
+      tx.oncomplete = () => db.close();
+    });
+  }
+
+  async function storePhoto(type, id, file) {
+    const blob = await prepareImageBlob(file);
+    const db = await openPhotoDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(PHOTO_STORE, "readwrite");
+      const req = tx.objectStore(PHOTO_STORE).add({
+        ownerKey: photoOwnerKey(type,id),
+        ownerType: type,
+        ownerId: id,
+        name: file.name || "photo.jpg",
+        originalType: file.type || blob.type || "image/jpeg",
+        originalLastModified: file.lastModified || null,
+        addedAt: Date.now(),
+        blob
+      });
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+      tx.oncomplete = () => db.close();
+    });
+  }
+
+  async function deletePhoto(photoId) {
+    const db = await openPhotoDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(PHOTO_STORE, "readwrite");
+      tx.objectStore(PHOTO_STORE).delete(Number(photoId));
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  }
+
+  async function getPhoto(photoId) {
+    const db = await openPhotoDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(PHOTO_STORE, "readonly");
+      const req = tx.objectStore(PHOTO_STORE).get(Number(photoId));
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+      tx.oncomplete = () => db.close();
+    });
+  }
+
+  async function prepareImageBlob(file) {
+    // Keep small images as-is; compress larger photos to save browser storage.
+    if (file.size <= 1200000) return file;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const maxSide = 1800;
+      const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close?.();
+      return await new Promise((resolve, reject) => canvas.toBlob(
+        blob => blob ? resolve(blob) : reject(new Error("Image conversion failed")),
+        "image/jpeg", 0.82
+      ));
+    } catch {
+      return file;
+    }
+  }
+
+  function photoSectionHtml() {
+    return `<section class="photo-section">
+      <div class="photo-section-head">
+        <h3>Photos</h3>
+        <button id="modalAddPhotos" class="secondary-btn" type="button">Add photos</button>
+      </div>
+      <p class="photo-section-note">Choose existing pictures from your phone. They are stored locally under this presentation.</p>
+      <div id="modalPhotos" class="photo-grid"><div class="photo-loading">Loading…</div></div>
+    </section>`;
+  }
+
+  async function renderModalPhotos() {
+    const target = $("#modalPhotos");
+    if (!target || !currentModal) return;
+    target.innerHTML = `<div class="photo-loading">Loading…</div>`;
+    try {
+      const photos = await getPhotos(currentModal.type, currentModal.id);
+      if (!photos.length) {
+        target.innerHTML = `<div class="photo-empty">No photos attached yet.</div>`;
+        return;
+      }
+      target.innerHTML = photos.map(p => {
+        const url = URL.createObjectURL(p.blob);
+        return `<div class="photo-item">
+          <button class="photo-thumb" type="button" data-photo-id="${p.id}" data-photo-url="${url}" aria-label="Open photo">
+            <img src="${url}" alt="Presentation photo">
+          </button>
+          <button class="photo-delete" type="button" data-photo-delete="${p.id}" aria-label="Delete photo">×</button>
+        </div>`;
+      }).join("");
+    } catch {
+      target.innerHTML = `<div class="photo-empty">Could not load photos on this device.</div>`;
+    }
+  }
+
+  async function addSelectedPhotos(files) {
+    if (!currentModal || !files?.length) return;
+    const images = [...files].filter(f => f.type.startsWith("image/"));
+    if (!images.length) return toast("Choose image files");
+    toast(images.length === 1 ? "Adding photo…" : `Adding ${images.length} photos…`);
+    try {
+      for (const file of images) await storePhoto(currentModal.type, currentModal.id, file);
+      await renderModalPhotos();
+      toast(images.length === 1 ? "Photo added" : `${images.length} photos added`);
+    } catch (err) {
+      console.error(err);
+      toast("Could not save photo");
+    }
+  }
+
+  async function openStoredPhoto(photoId) {
+    try {
+      const photo = await getPhoto(photoId);
+      if (!photo) return;
+      const img = $("#photoViewerImage");
+      const old = img.dataset.objectUrl;
+      if (old) URL.revokeObjectURL(old);
+      const url = URL.createObjectURL(photo.blob);
+      img.src = url;
+      img.dataset.objectUrl = url;
+      $("#photoViewer").showModal();
+    } catch {
+      toast("Could not open photo");
+    }
+  }
+
+  function closePhotoViewer() {
+    const dlg = $("#photoViewer");
+    if (dlg.open) dlg.close();
+    const img = $("#photoViewerImage");
+    const url = img.dataset.objectUrl;
+    if (url) URL.revokeObjectURL(url);
+    img.removeAttribute("src");
+    delete img.dataset.objectUrl;
   }
 
   function conferenceNowParts() {
@@ -327,9 +500,11 @@
         ${e.chair?`<div class="detail-box"><span>Session chair</span><strong>${esc(e.chair)}</strong></div>`:""}
         <div class="detail-box"><span>Program</span><strong>PDF page ${e.sourcePage}</strong></div>
       </div>
+      ${photoSectionHtml()}
       <a class="pdf-link" href="./program.pdf#page=${e.sourcePage}" target="_blank" rel="noopener">Open this page in the PDF ↗</a>`;
     refreshModalStar();
     $("#detailModal").showModal();
+    renderModalPhotos();
   }
 
   function openPoster(id) {
@@ -349,10 +524,12 @@
         <div class="detail-box"><span>Program</span><strong>PDF page ${p.sourcePage}</strong></div>
         <div class="detail-box"><span>Book of Abstracts</span><strong>Page ${p.abstractBookPage}</strong></div>
       </div>
+      ${photoSectionHtml()}
       ${p.abstract ? `<section class="abstract-section"><h3>Abstract</h3><div class="abstract-text">${abstractHtml}</div></section>` : ""}
       <a class="pdf-link" href="./program.pdf#page=${p.sourcePage}" target="_blank" rel="noopener">Open this poster in the program PDF ↗</a>`;
     refreshModalStar();
     $("#detailModal").showModal();
+    renderModalPhotos();
   }
 
   function showView(name) {
@@ -476,6 +653,35 @@
       if (confirm("Clear all starred talks and posters?")) {
         state.favorites=[];state.posterFavorites=[];saveState();renderProgram();renderPosters();renderMySchedule();toast("Favorites cleared");
       }
+    });
+
+    $("#modalContent").addEventListener("click", async e => {
+      const addBtn = e.target.closest("#modalAddPhotos");
+      if (addBtn) {
+        $("#photoInput").click();
+        return;
+      }
+      const delBtn = e.target.closest("[data-photo-delete]");
+      if (delBtn) {
+        e.stopPropagation();
+        if (confirm("Delete this photo from the presentation?")) {
+          await deletePhoto(delBtn.dataset.photoDelete);
+          await renderModalPhotos();
+          toast("Photo deleted");
+        }
+        return;
+      }
+      const thumb = e.target.closest("[data-photo-id]");
+      if (thumb) openStoredPhoto(thumb.dataset.photoId);
+    });
+    $("#photoInput").addEventListener("change", async e => {
+      const files = e.target.files;
+      await addSelectedPhotos(files);
+      e.target.value = "";
+    });
+    $("#photoViewerClose").addEventListener("click", closePhotoViewer);
+    $("#photoViewer").addEventListener("click", e => {
+      if (e.target === $("#photoViewer")) closePhotoViewer();
     });
 
     $("#modalClose").addEventListener("click",()=>$("#detailModal").close());
