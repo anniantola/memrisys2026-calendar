@@ -64,25 +64,43 @@
       <section id="galleryView" class="view" data-view="gallery">
         <div class="view-heading">
           <div>
-            <div class="eyebrow">PRESENTATION PHOTOS</div>
+            <div class="eyebrow">CONFERENCE ARCHIVE</div>
             <h2>Gallery</h2>
           </div>
           <span id="galleryCount" class="count-badge">0</span>
         </div>
 
-        <div class="gallery-import-card">
-          <div>
-            <strong>Import photos by time</strong>
-            <p>Select conference photos from your phone. Capture times are compared with the programme, with starred sessions suggested first.</p>
-          </div>
-          <button id="smartPhotoImportBtn" class="primary-btn" type="button">Import photos</button>
+        <div class="gallery-tabs" role="tablist" aria-label="Gallery sections">
+          <button class="gallery-tab active" type="button" data-gallery-panel="photos" role="tab" aria-selected="true">Photos</button>
+          <button class="gallery-tab" type="button" data-gallery-panel="notes" role="tab" aria-selected="false">Notes <span id="galleryNotesCount" class="gallery-tab-count">0</span></button>
         </div>
 
-        <div id="galleryMeta" class="section-meta">
-          <span>Stored locally on this device</span>
+        <div id="galleryPhotosPanel" class="gallery-panel">
+          <div class="gallery-import-card">
+            <div>
+              <strong>Import photos by time</strong>
+              <p>Select conference photos from your phone. Capture times are compared with the programme, with starred sessions suggested first.</p>
+            </div>
+            <button id="smartPhotoImportBtn" class="primary-btn" type="button">Import photos</button>
+          </div>
+
+          <div id="galleryMeta" class="section-meta">
+            <span>Stored locally on this device</span>
+          </div>
+          <div id="galleryContent" class="gallery-content">
+            <div class="photo-loading">Loading gallery…</div>
+          </div>
         </div>
-        <div id="galleryContent" class="gallery-content">
-          <div class="photo-loading">Loading gallery…</div>
+
+        <div id="galleryNotesPanel" class="gallery-panel" hidden>
+          <label class="search-wrap gallery-note-search">
+            <span class="search-icon">⌕</span>
+            <input id="galleryNoteSearch" type="search" placeholder="Search all notes, titles, speakers…" autocomplete="off">
+          </label>
+          <div id="galleryNotesMeta" class="section-meta">
+            <span>All presentation notes</span>
+          </div>
+          <div id="galleryNotesContent" class="gallery-notes-content"></div>
         </div>
       </section>
 

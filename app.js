@@ -14,6 +14,7 @@
     day: 1,
     posterCategory: "all",
     view: "program",
+    galleryMode: "photos",
     notes: {}
   };
 
@@ -28,6 +29,9 @@
   let modalPhotoObjectUrls = [];
   let photoViewerIds = [];
   let photoViewerIndex = -1;
+  let galleryPhotoCount = 0;
+  let galleryNoteCount = 0;
+  let galleryNoteQuery = "";
 
   function loadState() {
     try {
@@ -65,6 +69,7 @@
     if (text.trim()) state.notes[key] = text;
     else delete state.notes[key];
     saveState();
+    if (state.view === "gallery") renderGalleryNotes();
   }
 
   function noteSectionHtml(type, id) {
@@ -626,6 +631,149 @@
     modalPhotoObjectUrls = [];
   }
 
+
+  function escapeRegExp(value="") {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function highlightSearch(text, query) {
+    const value = String(text || "");
+    const q = String(query || "").trim();
+    if (!q) return esc(value);
+    const re = new RegExp(`(${escapeRegExp(q)})`, "ig");
+    return value.split(re).map((part, index) =>
+      index % 2 ? `<mark>${esc(part)}</mark>` : esc(part)
+    ).join("");
+  }
+
+  function noteSnippet(text, query, maxLength=260) {
+    const value = String(text || "").replace(/\s+/g, " ").trim();
+    if (!value) return "";
+    if (value.length <= maxLength) return value;
+
+    const q = String(query || "").trim().toLowerCase();
+    if (!q) return value.slice(0, maxLength).trimEnd() + "…";
+
+    const hit = value.toLowerCase().indexOf(q);
+    if (hit < 0) return value.slice(0, maxLength).trimEnd() + "…";
+
+    const before = Math.floor((maxLength - q.length) * 0.42);
+    let start = Math.max(0, hit - before);
+    let end = Math.min(value.length, start + maxLength);
+    if (end - start < maxLength) start = Math.max(0, end - maxLength);
+
+    return `${start > 0 ? "…" : ""}${value.slice(start, end).trim()}${end < value.length ? "…" : ""}`;
+  }
+
+  function collectNoteEntries() {
+    const entries = [];
+    const notes = state.notes && typeof state.notes === "object" ? state.notes : {};
+
+    for (const [key, rawNote] of Object.entries(notes)) {
+      const note = String(rawNote || "").trim();
+      if (!note) continue;
+
+      const divider = key.indexOf(":");
+      if (divider < 0) continue;
+      const type = key.slice(0, divider);
+      const id = key.slice(divider + 1);
+
+      if (type === "event") {
+        const e = byId.get(id);
+        if (!e) continue;
+        entries.push({
+          type,
+          id,
+          title: e.title || "Presentation",
+          person: e.speaker || "",
+          affiliation: e.affiliation || "",
+          note,
+          meta: `${e.weekday} ${e.dateLabel} · ${e.start}–${e.end}${e.room ? ` · ${e.room}` : ""}`,
+          sortKey: `${e.date}|${e.start}|${String(e.track || 0).padStart(2,"0")}|${e.title || ""}`
+        });
+      } else if (type === "poster") {
+        const p = posterById.get(id);
+        if (!p) continue;
+        entries.push({
+          type,
+          id,
+          title: `Poster #${p.number} · ${p.title}`,
+          person: p.author || "",
+          affiliation: p.affiliation || "",
+          note,
+          meta: "Tuesday 6 October · 18:00–20:00 · Staatsarchiv",
+          sortKey: `2026-10-06|18:00|99|${String(p.number || 999).padStart(3,"0")}`
+        });
+      }
+    }
+
+    return entries.sort((a,b) => a.sortKey.localeCompare(b.sortKey));
+  }
+
+  function syncGalleryMode() {
+    const mode = state.galleryMode === "notes" ? "notes" : "photos";
+    state.galleryMode = mode;
+
+    $$(".gallery-tab").forEach(btn => {
+      const active = btn.dataset.galleryPanel === mode;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+    });
+
+    const photosPanel = $("#galleryPhotosPanel");
+    const notesPanel = $("#galleryNotesPanel");
+    if (photosPanel) photosPanel.hidden = mode !== "photos";
+    if (notesPanel) notesPanel.hidden = mode !== "notes";
+
+    const count = $("#galleryCount");
+    if (count) count.textContent = mode === "notes" ? galleryNoteCount : galleryPhotoCount;
+  }
+
+  function renderGalleryNotes() {
+    const target = $("#galleryNotesContent");
+    const meta = $("#galleryNotesMeta");
+    const tabCount = $("#galleryNotesCount");
+    if (!target || !meta || !tabCount) return;
+
+    const allEntries = collectNoteEntries();
+    galleryNoteCount = allEntries.length;
+    tabCount.textContent = galleryNoteCount;
+
+    const query = String(galleryNoteQuery || "").trim();
+    const q = query.toLowerCase();
+    const filtered = q ? allEntries.filter(entry =>
+      [entry.title, entry.person, entry.affiliation, entry.note, entry.meta]
+        .some(value => String(value || "").toLowerCase().includes(q))
+    ) : allEntries;
+
+    meta.innerHTML = query
+      ? `<span>${filtered.length} result${filtered.length===1?"":"s"}</span><span>${galleryNoteCount} total notes</span>`
+      : `<span>${galleryNoteCount} note${galleryNoteCount===1?"":"s"}</span><span>Tap a note to open its presentation</span>`;
+
+    if (!filtered.length) {
+      target.innerHTML = query
+        ? `<div class="empty-state"><strong>No matching notes</strong>Try another word from your note, presentation title, speaker or author.</div>`
+        : `<div class="empty-state"><strong>No notes yet</strong>Notes you write under talks and posters will appear here automatically.</div>`;
+      syncGalleryMode();
+      return;
+    }
+
+    target.innerHTML = filtered.map(entry => {
+      const snippet = noteSnippet(entry.note, query);
+      const person = entry.person ? `<div class="gallery-note-person">${highlightSearch(entry.person, query)}</div>` : "";
+      return `<button class="gallery-note-card" type="button"
+        data-note-owner-type="${esc(entry.type)}"
+        data-note-owner-id="${esc(entry.id)}">
+        <div class="gallery-note-meta">${highlightSearch(entry.meta, query)}</div>
+        <div class="gallery-note-title">${highlightSearch(entry.title, query)}</div>
+        ${person}
+        <div class="gallery-note-text">${highlightSearch(snippet, query)}</div>
+      </button>`;
+    }).join("");
+
+    syncGalleryMode();
+  }
+
   async function renderGallery() {
     const target = $("#galleryContent");
     const count = $("#galleryCount");
@@ -638,10 +786,13 @@
       for (const photo of photos) {
         if (!photo.thumbnailBlob) await ensurePhotoThumbnail(photo);
       }
-      count.textContent = photos.length;
+      galleryPhotoCount = photos.length;
+      count.textContent = state.galleryMode === "notes" ? galleryNoteCount : galleryPhotoCount;
       meta.innerHTML = `<span>${photos.length} photo${photos.length===1?"":"s"}</span><span>Stored locally on this device</span>`;
+      renderGalleryNotes();
       if (!photos.length) {
         target.innerHTML = `<div class="empty-state"><strong>No photos yet</strong>Import conference photos by time, or add them from an individual talk or poster.</div>`;
+        syncGalleryMode();
         return;
       }
       const groups = new Map();
@@ -676,10 +827,14 @@
           <div class="gallery-thumb-grid">${thumbs}</div>
         </section>`;
       }).join("");
+      syncGalleryMode();
     } catch (err) {
       console.error(err);
-      count.textContent = "0";
+      galleryPhotoCount = 0;
+      count.textContent = state.galleryMode === "notes" ? galleryNoteCount : "0";
       target.innerHTML = `<div class="photo-empty">Could not load the gallery on this device.</div>`;
+      renderGalleryNotes();
+      syncGalleryMode();
     }
   }
 
@@ -1713,6 +1868,26 @@
     $("#photoImportClose").addEventListener("click",closePhotoImportDialog);
     $("#photoImportDialog").addEventListener("click",e=>{ if(e.target===$("#photoImportDialog")) closePhotoImportDialog(); });
 
+    $$(".gallery-tab").forEach(btn => btn.addEventListener("click", () => {
+      state.galleryMode = btn.dataset.galleryPanel === "notes" ? "notes" : "photos";
+      saveState();
+      if (state.galleryMode === "notes") renderGalleryNotes();
+      syncGalleryMode();
+    }));
+
+    $("#galleryNoteSearch").addEventListener("input", e => {
+      galleryNoteQuery = e.target.value;
+      renderGalleryNotes();
+    });
+
+    $("#galleryNotesContent").addEventListener("click", e => {
+      const card = e.target.closest("[data-note-owner-type]");
+      if (!card) return;
+      card.dataset.noteOwnerType === "poster"
+        ? openPoster(card.dataset.noteOwnerId)
+        : openEvent(card.dataset.noteOwnerId);
+    });
+
     $("#galleryContent").addEventListener("click", async e => {
       const del = e.target.closest("[data-gallery-delete]");
       if (del) {
@@ -1922,6 +2097,7 @@
     renderProgram();
     renderPosters();
     renderMySchedule();
+    renderGalleryNotes();
     renderGallery();
     showView(state.view || "program");
     updateInstallUI();

@@ -1,20 +1,23 @@
-# MEMRISYS 2026 — photo navigation layout fix
+# MEMRISYS 2026 — Gallery Notes archive
 
-The full-screen photo viewer navigation has been redesigned:
+Gallery now has two sections: **Photos** and **Notes**.
 
-- Both arrows are **below the photo**
-- Both arrows are in **one horizontal row**
-- The photo counter sits between them
-- No arrow overlays cover the image
-- Swipe left/right still works
-- Keyboard left/right navigation still works
+## Notes
+- Every non-empty note written under a talk or poster appears in one chronological list.
+- Search covers the note text, presentation/poster title, speaker/author, affiliation and schedule metadata.
+- Search results show a compact excerpt with the matching term highlighted.
+- Tapping a note opens the original talk/poster directly, where the note can be edited.
+- Notes remain part of the existing JSON backup and PPTX export.
 
-Service-worker cache: v16.
+The Photos section and timestamp importer are unchanged.
+
+Service-worker cache: v17.
 
 ## Deployment
 Replace:
 - `index.html`
+- `app.js`
 - `styles.css`
 - `service-worker.js`
 
-`app.js` is unchanged from the previous Gallery-arrows version.
+`README.md` is optional.

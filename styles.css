@@ -484,3 +484,100 @@ html.share-qr-open,body.share-qr-open{overflow:hidden!important;overscroll-behav
   }
 }
 
+
+
+/* Gallery Photos / Notes archive */
+.gallery-tabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  margin:0 0 14px;
+  padding:4px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--surface);
+}
+.gallery-tab{
+  min-height:40px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:var(--muted);
+  font:inherit;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.gallery-tab.active{
+  background:var(--surface-2);
+  color:var(--text);
+  box-shadow:inset 0 0 0 1px var(--line);
+}
+.gallery-tab-count{
+  display:inline-grid;
+  place-items:center;
+  min-width:20px;
+  height:20px;
+  margin-left:4px;
+  padding:0 5px;
+  border-radius:999px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  font-size:9px;
+  line-height:1;
+}
+.gallery-panel[hidden]{display:none!important}
+.gallery-note-search{margin:0 0 12px}
+.gallery-notes-content{display:grid;gap:10px}
+.gallery-note-card{
+  width:100%;
+  padding:14px 15px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--surface);
+  color:var(--text);
+  text-align:left;
+  box-shadow:var(--shadow);
+  cursor:pointer;
+}
+.gallery-note-card:active{transform:translateY(1px)}
+.gallery-note-meta{
+  margin-bottom:5px;
+  color:var(--muted);
+  font-size:10px;
+  font-weight:750;
+  line-height:1.35;
+}
+.gallery-note-title{
+  color:var(--text);
+  font-size:14px;
+  font-weight:850;
+  line-height:1.35;
+}
+.gallery-note-person{
+  margin-top:3px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.35;
+}
+.gallery-note-text{
+  margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid var(--line);
+  color:var(--text);
+  font-size:12px;
+  line-height:1.55;
+  white-space:pre-wrap;
+}
+.gallery-note-card mark{
+  padding:0 1px;
+  border-radius:3px;
+  background:rgba(255,210,65,.38);
+  color:inherit;
+}
+html[data-theme="dark"] .gallery-tab,
+html[data-theme="dark"] .gallery-note-card,
+html[data-theme="dark"] .gallery-note-title,
+html[data-theme="dark"] .gallery-note-text{
+  color:#fff;
+}
