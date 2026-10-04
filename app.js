@@ -842,9 +842,12 @@
     return `<section class="photo-section">
       <div class="photo-section-head">
         <h3>Photos</h3>
-        <button id="modalAddPhotos" class="secondary-btn" type="button">Add photos</button>
       </div>
-      <p class="photo-section-note">Choose existing pictures from your phone. They are stored locally under this presentation.</p>
+      <div class="photo-action-row">
+        <button id="modalTakePhoto" class="primary-btn photo-action-btn" type="button">Take photo</button>
+        <button id="modalAddPhotos" class="secondary-btn photo-action-btn" type="button">Add existing</button>
+      </div>
+      <p class="photo-section-note">Camera photos are attached directly to this presentation. The app also tries to save a normal image copy to your phone.</p>
       <div id="modalPhotos" class="photo-grid"><div class="photo-loading">Loading…</div></div>
     </section>`;
   }
@@ -878,23 +881,95 @@
     }
   }
 
-  async function addSelectedPhotos(files) {
+
+  function photoOwnerTitle(type, id) {
+    if (type === "poster") {
+      const p = posterById.get(id);
+      return p ? `Poster ${p.number} ${p.title}` : "MEMRISYS poster";
+    }
+    const e = byId.get(id);
+    return e?.title || "MEMRISYS presentation";
+  }
+
+  function safePhotoFilenamePart(value, maxLength=72) {
+    return String(value || "")
+      .normalize("NFKD")
+      .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, maxLength) || "presentation";
+  }
+
+  function imageExtension(file) {
+    const fromName = String(file?.name || "").match(/\.([a-zA-Z0-9]{2,5})$/)?.[1];
+    if (fromName) return fromName.toLowerCase();
+    const mime = String(file?.type || "").toLowerCase();
+    if (mime.includes("png")) return "png";
+    if (mime.includes("webp")) return "webp";
+    if (mime.includes("heic")) return "heic";
+    if (mime.includes("heif")) return "heif";
+    return "jpg";
+  }
+
+  function downloadCameraCopy(file, capture, type, id) {
+    try {
+      const title = safePhotoFilenamePart(photoOwnerTitle(type, id));
+      const stamp = capture?.date && capture?.time
+        ? `${capture.date}_${String(capture.time).replace(/:/g,"-")}`
+        : new Date().toISOString().replace(/[:.]/g,"-").slice(0,19);
+      const name = `MEMRISYS_${stamp}_${title}.${imageExtension(file)}`;
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = name;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      return true;
+    } catch (err) {
+      console.warn("Could not save camera copy to device", err);
+      return false;
+    }
+  }
+
+  async function addSelectedPhotos(files, options={}) {
     if (!currentModal || !files?.length) return;
     const images = [...files].filter(f => f.type.startsWith("image/"));
     if (!images.length) return toast("Choose image files");
+
+    const owner = {type:currentModal.type, id:currentModal.id};
     toast(images.length === 1 ? "Adding photo…" : `Adding ${images.length} photos…`);
+
     try {
+      let deviceCopies = 0;
       for (const file of images) {
         const capture = await captureInfoForFile(file);
-        await storePhoto(currentModal.type, currentModal.id, file, {
+        await storePhoto(owner.type, owner.id, file, {
           captureDate:capture.date,
           captureTime:capture.time,
           timestampSource:capture.source
         });
+
+        if (options.saveDeviceCopy && downloadCameraCopy(file, capture, owner.type, owner.id)) {
+          deviceCopies += 1;
+        }
       }
+
       await renderModalPhotos();
       renderGallery();
-      toast(images.length === 1 ? "Photo added" : `${images.length} photos added`);
+
+      if (options.saveDeviceCopy && images.length === 1) {
+        toast(deviceCopies ? "Photo added · phone copy requested" : "Photo added");
+      } else if (options.saveDeviceCopy) {
+        toast(deviceCopies
+          ? `${images.length} photos added · phone copies requested`
+          : `${images.length} photos added`);
+      } else {
+        toast(images.length === 1 ? "Photo added" : `${images.length} photos added`);
+      }
     } catch (err) {
       console.error(err);
       toast("Could not save photo");
@@ -1967,6 +2042,12 @@
     });
 
     $("#modalContent").addEventListener("click", async e => {
+      const takeBtn = e.target.closest("#modalTakePhoto");
+      if (takeBtn) {
+        $("#cameraInput").click();
+        return;
+      }
+
       const addBtn = e.target.closest("#modalAddPhotos");
       if (addBtn) {
         $("#photoInput").click();
@@ -1990,6 +2071,12 @@
         openStoredPhoto(thumb.dataset.photoId, presentationIds);
       }
     });
+    $("#cameraInput").addEventListener("change", async e => {
+      const files = e.target.files;
+      await addSelectedPhotos(files, {saveDeviceCopy:true});
+      e.target.value = "";
+    });
+
     $("#photoInput").addEventListener("change", async e => {
       const files = e.target.files;
       await addSelectedPhotos(files);

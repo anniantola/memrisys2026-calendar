@@ -1,17 +1,15 @@
-# MEMRISYS 2026 — Gallery Notes archive
+# MEMRISYS 2026 — camera capture
 
-Gallery now has two sections: **Photos** and **Notes**.
+Each talk/poster now has two photo actions:
 
-## Notes
-- Every non-empty note written under a talk or poster appears in one chronological list.
-- Search covers the note text, presentation/poster title, speaker/author, affiliation and schedule metadata.
-- Search results show a compact excerpt with the matching term highlighted.
-- Tapping a note opens the original talk/poster directly, where the note can be edited.
-- Notes remain part of the existing JSON backup and PPTX export.
+- **Take photo** — opens the phone camera (rear/environment camera where supported) and attaches the resulting image directly to that presentation.
+- **Add existing** — keeps the existing gallery/file-picker flow.
 
-The Photos section and timestamp importer are unchanged.
+After a camera capture, the app stores its own compressed copy + thumbnail in IndexedDB and also makes a best-effort request to save the original image as a normal file on the phone. On Android/Chrome this normally appears in Downloads and may also be indexed by the phone's Photos/Gallery app. Some camera apps already save captures to the normal camera roll themselves.
 
-Service-worker cache: v17.
+A browser/PWA cannot reliably write directly into the system camera-roll folder on every Android device without native-app permissions, so the phone copy is best-effort rather than guaranteed.
+
+Service-worker cache: v18.
 
 ## Deployment
 Replace:
