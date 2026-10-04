@@ -26,6 +26,8 @@
   let pendingPhotoImports = [];
   let galleryObjectUrls = [];
   let modalPhotoObjectUrls = [];
+  let photoViewerIds = [];
+  let photoViewerIndex = -1;
 
   function loadState() {
     try {
@@ -744,23 +746,56 @@
     }
   }
 
-  async function openStoredPhoto(photoId) {
-    try {
-      const photo = await getPhoto(photoId);
-      if (!photo) return;
-      const img = $("#photoViewerImage");
-      const old = img.dataset.objectUrl;
-      if (old) URL.revokeObjectURL(old);
-      const url = URL.createObjectURL(photo.blob);
-      img.src = url;
-      img.dataset.objectUrl = url;
+  function updatePhotoViewerControls() {
+    const prev = $("#photoViewerPrev");
+    const next = $("#photoViewerNext");
+    const counter = $("#photoViewerCounter");
+    const total = photoViewerIds.length;
+    const current = photoViewerIndex + 1;
 
-      const titleBar = $("#photoViewerTitleBar");
-      const titleInput = $("#photoViewerTitle");
-      const isUnclassified = photo.ownerType === "unclassified";
-      titleBar.hidden = !isUnclassified;
-      titleInput.value = isUnclassified ? String(photo.customTitle || "") : "";
-      titleInput.dataset.photoId = isUnclassified ? String(photo.id) : "";
+    prev.disabled = total <= 1 || photoViewerIndex <= 0;
+    next.disabled = total <= 1 || photoViewerIndex < 0 || photoViewerIndex >= total - 1;
+    prev.hidden = total <= 1;
+    next.hidden = total <= 1;
+    counter.textContent = total > 1 && current > 0 ? `${current} / ${total}` : "";
+  }
+
+  async function showPhotoViewerPhoto(photoId) {
+    const photo = await getPhoto(photoId);
+    if (!photo) return false;
+
+    const img = $("#photoViewerImage");
+    const old = img.dataset.objectUrl;
+    if (old) URL.revokeObjectURL(old);
+
+    const url = URL.createObjectURL(photo.blob);
+    img.src = url;
+    img.dataset.objectUrl = url;
+
+    const titleBar = $("#photoViewerTitleBar");
+    const titleInput = $("#photoViewerTitle");
+    const isUnclassified = photo.ownerType === "unclassified";
+    titleBar.hidden = !isUnclassified;
+    titleInput.value = isUnclassified ? String(photo.customTitle || "") : "";
+    titleInput.dataset.photoId = isUnclassified ? String(photo.id) : "";
+
+    updatePhotoViewerControls();
+    return true;
+  }
+
+  async function openStoredPhoto(photoId, contextIds = null) {
+    try {
+      const normalizedId = String(photoId);
+      const ids = Array.isArray(contextIds)
+        ? [...new Set(contextIds.map(String))]
+        : [normalizedId];
+
+      if (!ids.includes(normalizedId)) ids.unshift(normalizedId);
+      photoViewerIds = ids;
+      photoViewerIndex = Math.max(0, photoViewerIds.indexOf(normalizedId));
+
+      const shown = await showPhotoViewerPhoto(normalizedId);
+      if (!shown) return;
 
       const viewer = $("#photoViewer");
       viewer.hidden = false;
@@ -772,22 +807,39 @@
     }
   }
 
+  async function movePhotoViewer(direction) {
+    const nextIndex = photoViewerIndex + direction;
+    if (nextIndex < 0 || nextIndex >= photoViewerIds.length) return;
+    photoViewerIndex = nextIndex;
+    try {
+      await showPhotoViewerPhoto(photoViewerIds[photoViewerIndex]);
+    } catch {
+      toast("Could not open photo");
+    }
+  }
+
   function closePhotoViewer() {
     const dlg = $("#photoViewer");
     dlg.hidden = true;
     dlg.setAttribute("aria-hidden", "true");
     document.documentElement.classList.remove("photo-viewer-open");
     document.body.classList.remove("photo-viewer-open");
+
     const img = $("#photoViewerImage");
     const url = img.dataset.objectUrl;
     if (url) URL.revokeObjectURL(url);
     img.removeAttribute("src");
     delete img.dataset.objectUrl;
+
     const titleBar = $("#photoViewerTitleBar");
     const titleInput = $("#photoViewerTitle");
     titleBar.hidden = true;
     titleInput.value = "";
     titleInput.dataset.photoId = "";
+
+    photoViewerIds = [];
+    photoViewerIndex = -1;
+    updatePhotoViewerControls();
   }
 
   function conferenceNowParts() {
@@ -1673,7 +1725,12 @@
         return;
       }
       const thumb = e.target.closest("[data-gallery-photo]");
-      if (thumb) { openStoredPhoto(thumb.dataset.galleryPhoto); return; }
+      if (thumb) {
+        const galleryIds = [...$("#galleryContent").querySelectorAll("[data-gallery-photo]")]
+          .map(node => node.dataset.galleryPhoto);
+        openStoredPhoto(thumb.dataset.galleryPhoto, galleryIds);
+        return;
+      }
       const owner = e.target.closest("[data-gallery-owner-type]");
       if (owner) {
         const type = owner.dataset.galleryOwnerType;
@@ -1752,7 +1809,11 @@
         return;
       }
       const thumb = e.target.closest("[data-photo-id]");
-      if (thumb) openStoredPhoto(thumb.dataset.photoId);
+      if (thumb) {
+        const presentationIds = [...$("#modalPhotos").querySelectorAll("[data-photo-id]")]
+          .map(node => node.dataset.photoId);
+        openStoredPhoto(thumb.dataset.photoId, presentationIds);
+      }
     });
     $("#photoInput").addEventListener("change", async e => {
       const files = e.target.files;
@@ -1760,6 +1821,15 @@
       e.target.value = "";
     });
     $("#photoViewerClose").addEventListener("click", closePhotoViewer);
+    $("#photoViewerPrev").addEventListener("click", e => {
+      e.stopPropagation();
+      movePhotoViewer(-1);
+    });
+    $("#photoViewerNext").addEventListener("click", e => {
+      e.stopPropagation();
+      movePhotoViewer(1);
+    });
+
     let photoTitleSaveTimer = null;
     $("#photoViewerTitle").addEventListener("input", e => {
       const photoId = e.target.dataset.photoId;
@@ -1791,7 +1861,40 @@
     $("#photoViewer").addEventListener("click", e => {
       if (e.target === $("#photoViewer") || e.target === $("#photoViewerStage")) closePhotoViewer();
     });
+
+    let photoSwipeStartX = null;
+    let photoSwipeStartY = null;
+    $("#photoViewerStage").addEventListener("touchstart", e => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      photoSwipeStartX = touch.clientX;
+      photoSwipeStartY = touch.clientY;
+    }, {passive:true});
+    $("#photoViewerStage").addEventListener("touchend", e => {
+      if (photoSwipeStartX == null || photoSwipeStartY == null) return;
+      const touch = e.changedTouches[0];
+      if (!touch) return;
+      const dx = touch.clientX - photoSwipeStartX;
+      const dy = touch.clientY - photoSwipeStartY;
+      photoSwipeStartX = null;
+      photoSwipeStartY = null;
+      if (Math.abs(dx) < 45 || Math.abs(dx) <= Math.abs(dy)) return;
+      movePhotoViewer(dx < 0 ? 1 : -1);
+    }, {passive:true});
     document.addEventListener("keydown", e => {
+      if (!$("#photoViewer").hidden) {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          movePhotoViewer(-1);
+          return;
+        }
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
+          movePhotoViewer(1);
+          return;
+        }
+      }
+
       if (e.key !== "Escape") return;
       if (!$("#shareQrViewer").hidden) {
         closeShareQr();

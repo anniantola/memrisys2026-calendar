@@ -1,19 +1,20 @@
-# MEMRISYS 2026 — contact and share card
+# MEMRISYS 2026 — Gallery arrows update
 
-A new **My info** section is added to Settings with:
+The full-screen photo viewer now supports browsing without closing each photo.
 
-- Anni Antola
-- asanto@utu.fi
-- Wihuri Physical Laboratory
-- Department of Physics and Astronomy
-- University of Turku, Finland
-- the supplied QR code linking to the MEMRISYS planner
+## Navigation
+- Left/right arrow buttons appear on photos when there is more than one image in the current set.
+- A small `current / total` counter appears at the top.
+- Swiping left/right also changes photos on touch devices.
+- Keyboard left/right arrows work as well.
 
-The QR can be tapped or opened with **Show QR full screen** for an easy, high-contrast card to show other conference attendees.
+When a photo is opened from **Gallery**, navigation follows the complete Gallery order, including moving between presentation groups.
 
-The QR image is cached for offline use.
+When a photo is opened inside a **specific talk/poster**, navigation stays within that presentation's attached photos.
 
-Service-worker cache: v14.
+Custom titles for Unclassified photos continue to be editable in the viewer.
+
+Service-worker cache: v15.
 
 ## Deployment
 Replace:
@@ -21,8 +22,5 @@ Replace:
 - `app.js`
 - `styles.css`
 - `service-worker.js`
-
-Add:
-- `share-qr.jpg`
 
 `README.md` is optional.
