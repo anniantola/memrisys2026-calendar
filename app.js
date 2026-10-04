@@ -83,6 +83,23 @@
     </section>`;
   }
 
+
+  function openShareQr() {
+    const viewer = $("#shareQrViewer");
+    viewer.hidden = false;
+    viewer.setAttribute("aria-hidden", "false");
+    document.documentElement.classList.add("share-qr-open");
+    document.body.classList.add("share-qr-open");
+  }
+
+  function closeShareQr() {
+    const viewer = $("#shareQrViewer");
+    viewer.hidden = true;
+    viewer.setAttribute("aria-hidden", "true");
+    document.documentElement.classList.remove("share-qr-open");
+    document.body.classList.remove("share-qr-open");
+  }
+
   function openPhotoDb() {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(PHOTO_DB, 1);
@@ -1680,6 +1697,13 @@
     $("#importInput").addEventListener("change",e=>{if(e.target.files[0])importState(e.target.files[0]);e.target.value="";});
     $("#installBtn").addEventListener("click", installApp);
 
+    $("#shareQrBtn").addEventListener("click", openShareQr);
+    $("#shareQrFullBtn").addEventListener("click", openShareQr);
+    $("#shareQrClose").addEventListener("click", closeShareQr);
+    $("#shareQrViewer").addEventListener("click", e => {
+      if (e.target === $("#shareQrViewer")) closeShareQr();
+    });
+
     $("#clearBtn").addEventListener("click",()=>{
       if (!state.favorites.length && !state.posterFavorites.length) return toast("No favorites to clear");
       if (confirm("Clear all starred talks and posters?")) {
@@ -1768,7 +1792,12 @@
       if (e.target === $("#photoViewer") || e.target === $("#photoViewerStage")) closePhotoViewer();
     });
     document.addEventListener("keydown", e => {
-      if (e.key === "Escape" && !$("#photoViewer").hidden) closePhotoViewer();
+      if (e.key !== "Escape") return;
+      if (!$("#shareQrViewer").hidden) {
+        closeShareQr();
+        return;
+      }
+      if (!$("#photoViewer").hidden) closePhotoViewer();
     });
 
     $("#modalClose").addEventListener("click",()=>$("#detailModal").close());

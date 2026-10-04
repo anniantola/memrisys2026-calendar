@@ -157,6 +157,25 @@
         </div>
 
         <div class="settings-section">
+          <h3>My info</h3>
+          <div class="profile-share-card">
+            <div class="profile-info">
+              <div class="eyebrow">CONTACT</div>
+              <strong class="profile-name">Anni Antola</strong>
+              <a class="profile-email" href="mailto:asanto@utu.fi">asanto@utu.fi</a>
+              <p>Wihuri Physical Laboratory<br>Department of Physics and Astronomy<br>University of Turku, Finland</p>
+            </div>
+            <div class="profile-qr">
+              <button id="shareQrBtn" class="qr-preview-btn" type="button" aria-label="Show QR code full screen">
+                <img src="./share-qr.jpg" alt="QR code for the MEMRISYS 2026 planner">
+              </button>
+              <div class="qr-caption">Scan to open this planner</div>
+              <button id="shareQrFullBtn" class="secondary-btn qr-full-btn" type="button">Show QR full screen</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
           <h3>Data</h3>
           <div class="setting-card column">
             <div>
@@ -254,6 +273,17 @@
       </div>
     </div>
   </dialog>
+
+  <div id="shareQrViewer" class="share-qr-viewer" role="dialog" aria-modal="true" aria-label="Share QR code" hidden>
+    <button id="shareQrClose" class="share-qr-close" type="button" aria-label="Close QR code">×</button>
+    <div class="share-qr-full-card">
+      <strong>Anni Antola</strong>
+      <div class="share-qr-affiliation">Wihuri Physical Laboratory · University of Turku</div>
+      <img src="./share-qr.jpg" alt="QR code linking to the MEMRISYS 2026 planner">
+      <div class="share-qr-full-caption">Scan to open the MEMRISYS 2026 planner</div>
+      <a href="mailto:asanto@utu.fi">asanto@utu.fi</a>
+    </div>
+  </div>
 
   <div id="photoViewer" class="photo-viewer" role="dialog" aria-modal="true" aria-label="Photo viewer" hidden>
     <div class="photo-viewer-shell">

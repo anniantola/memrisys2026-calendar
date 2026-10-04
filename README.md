@@ -1,27 +1,28 @@
-# MEMRISYS 2026 — PWA icon cache-bust update
+# MEMRISYS 2026 — contact and share card
 
-The icon image itself was already changed in the previous update, but Android Chrome/WebAPK can reuse cached resources when the **manifest URL and icon URLs stay identical**.
+A new **My info** section is added to Settings with:
 
-This version deliberately gives both the manifest and all launcher icons completely new URLs:
+- Anni Antola
+- asanto@utu.fi
+- Wihuri Physical Laboratory
+- Department of Physics and Astronomy
+- University of Turku, Finland
+- the supplied QR code linking to the MEMRISYS planner
 
-- `manifest-v13.webmanifest`
-- `memrisys-icon-v13-180.png`
-- `memrisys-icon-v13-192.png`
-- `memrisys-icon-v13-512.png`
+The QR can be tapped or opened with **Show QR full screen** for an easy, high-contrast card to show other conference attendees.
 
-`index.html` now references the new manifest and icons, and the service-worker cache is bumped to v13.
+The QR image is cached for offline use.
 
-## Deploy
-Upload/replace:
+Service-worker cache: v14.
+
+## Deployment
+Replace:
 - `index.html`
+- `app.js`
+- `styles.css`
 - `service-worker.js`
 
 Add:
-- `manifest-v13.webmanifest`
-- `memrisys-icon-v13-180.png`
-- `memrisys-icon-v13-192.png`
-- `memrisys-icon-v13-512.png`
+- `share-qr.jpg`
 
-The old `manifest.webmanifest` and old `icon-*.png` files can remain in the repository; the app no longer references them.
-
-After deployment, uninstall the currently installed MEMRISYS app first, open the website in Chrome, reload once, then install again from the in-app Install button. The new manifest/icon URLs prevent the new WebAPK from fetching the old cached icon assets.
+`README.md` is optional.
