@@ -745,7 +745,11 @@
       titleInput.value = isUnclassified ? String(photo.customTitle || "") : "";
       titleInput.dataset.photoId = isUnclassified ? String(photo.id) : "";
 
-      $("#photoViewer").showModal();
+      const viewer = $("#photoViewer");
+      viewer.hidden = false;
+      viewer.setAttribute("aria-hidden", "false");
+      document.documentElement.classList.add("photo-viewer-open");
+      document.body.classList.add("photo-viewer-open");
     } catch {
       toast("Could not open photo");
     }
@@ -753,7 +757,10 @@
 
   function closePhotoViewer() {
     const dlg = $("#photoViewer");
-    if (dlg.open) dlg.close();
+    dlg.hidden = true;
+    dlg.setAttribute("aria-hidden", "true");
+    document.documentElement.classList.remove("photo-viewer-open");
+    document.body.classList.remove("photo-viewer-open");
     const img = $("#photoViewerImage");
     const url = img.dataset.objectUrl;
     if (url) URL.revokeObjectURL(url);
@@ -1040,6 +1047,28 @@
     $("#modalStar").textContent = on ? "★" : "☆";
   }
 
+  const MAIN_VENUE = {
+    name: "darmstadtium",
+    address: "Schlossgraben 1, 64283 Darmstadt, Germany",
+    maps: "https://www.google.com/maps/search/?api=1&query=darmstadtium%2C%20Schlossgraben%201%2C%2064283%20Darmstadt%2C%20Germany"
+  };
+
+  function venueForEvent(e) {
+    const title = String(e?.title || "").toLowerCase();
+    if (title.includes("mensa stadtmitte")) {
+      return {name:"Mensa Stadtmitte", address:"TU Darmstadt", maps:"https://www.google.com/maps/search/?api=1&query=Mensa%20Stadtmitte%20TU%20Darmstadt"};
+    }
+    if (e?.kind === "poster-session" || title.includes("poster session")) {
+      return {name:"Staatsarchiv", address:"Darmstadt", maps:"https://www.google.com/maps/search/?api=1&query=Hessisches%20Staatsarchiv%20Darmstadt"};
+    }
+    return MAIN_VENUE;
+  }
+
+  function venueBoxHtml(venue, room="") {
+    const roomText = room ? `${room[0].toUpperCase()+room.slice(1)} · ` : "";
+    return `<a class="detail-box detail-link" href="${venue.maps}" target="_blank" rel="noopener"><span>Venue</span><strong>${esc(roomText + venue.name)}</strong><small>${esc(venue.address)} · Open Maps ↗</small></a>`;
+  }
+
   function openEvent(id) {
     const e = byId.get(id); if (!e) return;
     currentModal = {type:"event",id};
@@ -1050,7 +1079,7 @@
       ${e.affiliation?`<div class="modal-aff">${esc(e.affiliation)}</div>`:""}
       <div class="modal-details">
         <div class="detail-box"><span>Time</span><strong>${esc(eventTimeLabel(e))}</strong></div>
-        <div class="detail-box"><span>Room</span><strong>${esc(e.room || "—")}</strong></div>
+        ${venueBoxHtml(venueForEvent(e), e.room || "")}
         ${e.chair?`<div class="detail-box"><span>Session chair</span><strong>${esc(e.chair)}</strong></div>`:""}
         <div class="detail-box"><span>Program</span><strong>PDF page ${e.sourcePage}</strong></div>
       </div>
@@ -1073,6 +1102,7 @@
       <div class="modal-aff">${esc(p.affiliation)}</div>
       <div class="modal-details">
         <div class="detail-box"><span>Session</span><strong>Tuesday 6 October · 18:00–20:00</strong></div>
+        ${venueBoxHtml({name:"Staatsarchiv", address:"Darmstadt", maps:"https://www.google.com/maps/search/?api=1&query=Hessisches%20Staatsarchiv%20Darmstadt"})}
         <div class="detail-box"><span>Venue</span><strong>Staatsarchiv</strong></div>
         <div class="detail-box"><span>Presenting author</span><strong>${esc(p.presentingAuthor || p.author || "—")}</strong></div>
         <div class="detail-box"><span>Corresponding author</span><strong>${esc(p.correspondingAuthor || "—")}</strong></div>
@@ -1735,7 +1765,10 @@
       }
     });
     $("#photoViewer").addEventListener("click", e => {
-      if (e.target === $("#photoViewer")) closePhotoViewer();
+      if (e.target === $("#photoViewer") || e.target === $("#photoViewerStage")) closePhotoViewer();
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && !$("#photoViewer").hidden) closePhotoViewer();
     });
 
     $("#modalClose").addEventListener("click",()=>$("#detailModal").close());

@@ -7,9 +7,9 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Memrisys 2026">
+  <meta name="apple-mobile-web-app-title" content="MEMRISYS 2026">
   <meta name="description" content="Mobile-friendly conference calendar for the Darmstadt memristor program, 5–8 October 2026.">
-  <title>Memristor Calendar</title>
+  <title>MEMRISYS 2026</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-180.png">
@@ -18,10 +18,13 @@
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div>
-        <div class="eyebrow">DARMSTADT · 5–8 OCTOBER 2026</div>
-        <h1>Memristor Calendar</h1>
-      </div>
+      <a class="brand-lockup" href="https://www.memrisys2026.org/" target="_blank" rel="noopener" aria-label="Open official MEMRISYS 2026 website">
+        <span class="brand-logo-wrap">
+          <img class="conference-logo" src="https://www.memrisys2026.org/_assets/a57faaf1d444d7622d584dccca25ccaf/Images/logo_v7.5_white.svg?1770040542=" alt="MEMRISYS 2026" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+          <span class="conference-logo-fallback" hidden>MEMRISYS 2026</span>
+        </span>
+        <span class="brand-subtitle">Darmstadt · 5–8 October 2026</span>
+      </a>
       <button id="nowBtn" class="icon-btn" type="button" aria-label="Jump to current day">Now</button>
     </header>
 
@@ -188,6 +191,17 @@
         </div>
 
         <div class="settings-section">
+          <h3>Venue</h3>
+          <a class="source-card venue-card" href="https://www.google.com/maps/search/?api=1&query=darmstadtium%2C%20Schlossgraben%201%2C%2064283%20Darmstadt%2C%20Germany" target="_blank" rel="noopener">
+            <div>
+              <strong>darmstadtium</strong>
+              <p>Schlossgraben 1 · 64283 Darmstadt · Open in Maps</p>
+            </div>
+            <span>↗</span>
+          </a>
+        </div>
+
+        <div class="settings-section">
           <h3>Source</h3>
           <a class="source-card" href="./program.pdf" target="_blank" rel="noopener">
             <div>
@@ -241,10 +255,10 @@
     </div>
   </dialog>
 
-  <dialog id="photoViewer" class="photo-viewer">
+  <div id="photoViewer" class="photo-viewer" role="dialog" aria-modal="true" aria-label="Photo viewer" hidden>
     <div class="photo-viewer-shell">
       <button id="photoViewerClose" class="photo-viewer-close" type="button" aria-label="Close photo">×</button>
-      <div class="photo-viewer-stage">
+      <div id="photoViewerStage" class="photo-viewer-stage">
         <img id="photoViewerImage" alt="Presentation photo">
       </div>
       <div id="photoViewerTitleBar" class="photo-viewer-titlebar" hidden>
@@ -252,7 +266,7 @@
         <input id="photoViewerTitle" type="text" maxlength="140" placeholder="Add a custom title…" autocomplete="off">
       </div>
     </div>
-  </dialog>
+  </div>
 
   <script src="./data.js"></script>
   <script src="./app.js"></script>

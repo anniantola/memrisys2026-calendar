@@ -47,6 +47,9 @@ html[data-theme="dark"] .gallery-group,
 html[data-theme="dark"] .gallery-import-card,
 html[data-theme="dark"] .photo-import-item,
 html[data-theme="dark"] .detail-box{
+.detail-link{text-decoration:none;color:inherit;cursor:pointer}
+.detail-link:hover,.detail-link:focus-visible{border-color:var(--accent);outline:none}
+.detail-link small{display:block;margin-top:4px;font-size:10px;font-weight:650;color:var(--accent);line-height:1.3}
   color:#ffffff;
 }
 html[data-theme="dark"] input,
@@ -72,7 +75,12 @@ html[data-theme="dark"] .toast{
   border:1px solid var(--line);
 }
 .app-shell{width:min(980px,100%);margin:0 auto;min-height:100vh}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 18px 12px;position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%, transparent);backdrop-filter:blur(16px)}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px 10px;position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%, transparent);backdrop-filter:blur(16px)}
+.brand-lockup{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-decoration:none;color:inherit}
+.brand-logo-wrap{display:flex;align-items:center;justify-content:flex-start;min-height:40px;max-width:min(64vw,390px);padding:7px 10px;border-radius:11px;background:#111;overflow:hidden}
+.conference-logo{display:block;width:auto;height:30px;max-width:100%;object-fit:contain;object-position:left center}
+.conference-logo-fallback{display:block;color:#fff;font-size:20px;line-height:1;font-weight:900;letter-spacing:.055em}
+.brand-subtitle{font-size:10px;font-weight:750;letter-spacing:.055em;text-transform:uppercase;color:var(--muted);padding-left:2px}
 h1,h2,h3,p{margin:0}
 h1{font-size:26px;letter-spacing:-.04em;line-height:1}
 h2{font-size:28px;letter-spacing:-.035em}
@@ -217,18 +225,19 @@ html.compact .time-group{gap:5px}
 .photo-delete{position:absolute;right:5px;top:5px;width:28px;height:28px;border:0;border-radius:999px;background:rgba(0,0,0,.7);color:white;font-size:18px;line-height:1;display:grid;place-items:center;cursor:pointer}
 .photo-empty{border:1px dashed var(--line);border-radius:12px;padding:14px;text-align:center;color:var(--muted);font-size:12px;line-height:1.4}
 .photo-loading{color:var(--muted);font-size:12px;padding:8px 0}
-.photo-viewer{position:fixed;inset:0;border:0;padding:0;margin:0;background:#000;width:100vw;height:100dvh;max-width:100vw;max-height:100dvh;overflow:hidden}
-.photo-viewer::backdrop{background:rgba(0,0,0,.96)}
-.photo-viewer-shell{box-sizing:border-box;width:100%;height:100%;display:flex;flex-direction:column;position:relative;padding:max(54px,calc(env(safe-area-inset-top) + 44px)) 12px max(12px,env(safe-area-inset-bottom));background:#000;overflow:hidden}
-.photo-viewer-stage{flex:1 1 auto;width:100%;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.photo-viewer-stage img{display:block;width:100%;height:100%;min-width:0;min-height:0;max-width:100%;max-height:100%;object-fit:contain;object-position:center;border-radius:8px}
-.photo-viewer-close{position:absolute;z-index:2;right:max(14px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));border:0;background:rgba(255,255,255,.16);color:white;width:38px;height:38px;border-radius:999px;font-size:28px;line-height:1}
+.photo-viewer[hidden]{display:none!important}
+.photo-viewer{position:fixed!important;inset:0!important;z-index:1000!important;width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;background:#000!important;overflow:hidden!important}
+.photo-viewer-shell{position:absolute;inset:0;display:flex;flex-direction:column;box-sizing:border-box;width:100%;height:100%;min-width:0;min-height:0;padding:max(54px,calc(env(safe-area-inset-top) + 44px)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));background:#000;overflow:hidden}
+.photo-viewer-stage{position:relative;flex:1 1 0;min-width:0;min-height:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#000}
+.photo-viewer-stage img{display:block!important;width:auto!important;height:auto!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;object-position:center center!important;image-orientation:from-image;border-radius:0;touch-action:manipulation}
+.photo-viewer-close{position:absolute;z-index:4;right:max(14px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));border:0;background:rgba(255,255,255,.18);color:#fff;width:40px;height:40px;border-radius:999px;font-size:29px;line-height:1;display:grid;place-items:center}
 .photo-viewer-titlebar{flex:0 0 auto;width:min(680px,100%);margin:10px auto 0;color:#fff}
-.photo-viewer-titlebar[hidden]{display:none}
+.photo-viewer-titlebar[hidden]{display:none!important}
 .photo-viewer-titlebar label{display:block;margin:0 0 5px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#c7c7cc}
 .photo-viewer-titlebar input{box-sizing:border-box;width:100%;border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:10px 12px;background:#171719;color:#fff;font:inherit;font-size:13px;outline:none}
 .photo-viewer-titlebar input::placeholder{color:#8e8e93}
 .photo-viewer-titlebar input:focus{border-color:#fff}
+html.photo-viewer-open,body.photo-viewer-open{overflow:hidden!important;overscroll-behavior:none}
 @media (max-width:430px){.photo-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 
@@ -310,6 +319,12 @@ html[data-theme="dark"] .presentation-note::placeholder{color:var(--muted)}
 
 /* Viewer reliability on mobile Chromium */
 @supports (height: 100svh){
-  .photo-viewer{height:100svh;max-height:100svh}
 }
 html[data-theme="dark"] .gallery-thumb-title{color:#fff}
+
+@media (max-width:520px){
+  .brand-logo-wrap{max-width:68vw;min-height:36px;padding:6px 9px}
+  .conference-logo{height:26px}
+  .conference-logo-fallback{font-size:18px}
+  .brand-subtitle{font-size:9px}
+}
