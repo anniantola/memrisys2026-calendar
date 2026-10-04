@@ -428,61 +428,59 @@ html.share-qr-open,body.share-qr-open{overflow:hidden!important;overscroll-behav
 
 
 /* Full-screen photo navigation */
+.photo-viewer-controls{
+  flex:0 0 auto;
+  width:min(420px,100%);
+  margin:10px auto 0;
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  gap:10px;
+}
 .photo-viewer-nav{
-  position:absolute;
-  z-index:5;
-  top:50%;
-  transform:translateY(-50%);
-  width:46px;
-  height:58px;
-  padding:0;
-  border:0;
-  border-radius:999px;
-  background:rgba(0,0,0,.46);
+  min-width:0;
+  height:44px;
+  padding:0 18px;
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:12px;
+  background:#171719;
   color:#fff!important;
   display:grid;
   place-items:center;
-  font-size:42px;
-  font-weight:300;
+  font-size:30px;
+  font-weight:400;
   line-height:1;
-  text-shadow:0 1px 3px rgba(0,0,0,.7);
-  backdrop-filter:blur(4px);
-  -webkit-backdrop-filter:blur(4px);
+  cursor:pointer;
 }
-.photo-viewer-prev{left:max(8px,env(safe-area-inset-left))}
-.photo-viewer-next{right:max(8px,env(safe-area-inset-right))}
-.photo-viewer-nav:disabled{opacity:.2;pointer-events:none}
-.photo-viewer-nav[hidden]{display:none!important}
+.photo-viewer-nav:active{background:#242426}
+.photo-viewer-nav:disabled{opacity:.28;cursor:default}
+.photo-viewer-nav[hidden]{visibility:hidden!important}
 .photo-viewer-counter{
-  position:absolute;
-  z-index:5;
-  top:max(18px,calc(env(safe-area-inset-top) + 7px));
-  left:50%;
-  transform:translateX(-50%);
   min-width:54px;
-  min-height:28px;
-  padding:5px 10px;
-  box-sizing:border-box;
-  border-radius:999px;
-  background:rgba(0,0,0,.46);
-  color:#fff;
+  padding:0 4px;
+  color:#c7c7cc;
   font-size:11px;
   font-weight:800;
-  line-height:18px;
+  line-height:44px;
   text-align:center;
   pointer-events:none;
-  backdrop-filter:blur(4px);
-  -webkit-backdrop-filter:blur(4px);
 }
-.photo-viewer-counter:empty{display:none}
+.photo-viewer-counter:empty{visibility:hidden}
 
 @media (max-width:520px){
-  .photo-viewer-nav{
-    width:40px;
-    height:52px;
-    font-size:38px;
-    background:rgba(0,0,0,.38);
+  .photo-viewer-controls{
+    width:100%;
+    gap:8px;
+    margin-top:8px;
   }
-  .photo-viewer-prev{left:max(4px,env(safe-area-inset-left))}
-  .photo-viewer-next{right:max(4px,env(safe-area-inset-right))}
+  .photo-viewer-nav{
+    height:42px;
+    border-radius:10px;
+    font-size:28px;
+  }
+  .photo-viewer-counter{
+    min-width:48px;
+    line-height:42px;
+  }
 }
+

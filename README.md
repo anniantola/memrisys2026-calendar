@@ -1,26 +1,20 @@
-# MEMRISYS 2026 — Gallery arrows update
+# MEMRISYS 2026 — photo navigation layout fix
 
-The full-screen photo viewer now supports browsing without closing each photo.
+The full-screen photo viewer navigation has been redesigned:
 
-## Navigation
-- Left/right arrow buttons appear on photos when there is more than one image in the current set.
-- A small `current / total` counter appears at the top.
-- Swiping left/right also changes photos on touch devices.
-- Keyboard left/right arrows work as well.
+- Both arrows are **below the photo**
+- Both arrows are in **one horizontal row**
+- The photo counter sits between them
+- No arrow overlays cover the image
+- Swipe left/right still works
+- Keyboard left/right navigation still works
 
-When a photo is opened from **Gallery**, navigation follows the complete Gallery order, including moving between presentation groups.
-
-When a photo is opened inside a **specific talk/poster**, navigation stays within that presentation's attached photos.
-
-Custom titles for Unclassified photos continue to be editable in the viewer.
-
-Service-worker cache: v15.
+Service-worker cache: v16.
 
 ## Deployment
 Replace:
 - `index.html`
-- `app.js`
 - `styles.css`
 - `service-worker.js`
 
-`README.md` is optional.
+`app.js` is unchanged from the previous Gallery-arrows version.
