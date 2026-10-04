@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Memrisys 2026">
+  <meta name="description" content="Mobile-friendly conference calendar for the Darmstadt memristor program, 5–8 October 2026.">
+  <title>Memristor Calendar</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">DARMSTADT · 5–8 OCTOBER 2026</div>
+        <h1>Memristor Calendar</h1>
+      </div>
+      <button id="nowBtn" class="icon-btn" type="button" aria-label="Jump to current day">Now</button>
+    </header>
+
+    <main id="main" class="main">
+      <section id="programView" class="view active" data-view="program">
+        <div class="day-tabs" id="dayTabs" aria-label="Conference days"></div>
+
+        <div class="hero-card" id="statusCard"></div>
+
+        <div class="toolbar-card">
+          <label class="search-wrap">
+            <span class="search-icon">⌕</span>
+            <input id="programSearch" type="search" placeholder="Search talks, speakers, sessions…" autocomplete="off">
+          </label>
+          <div class="chip-row" id="roomFilters">
+            <button class="chip active" data-room="all">All rooms</button>
+            <button class="chip" data-room="europium">Europium</button>
+            <button class="chip" data-room="helium">Helium</button>
+          </div>
+        </div>
+
+        <div id="programMeta" class="section-meta"></div>
+        <div id="programList" class="timeline"></div>
+      </section>
+
+      <section id="myView" class="view" data-view="my">
+        <div class="view-heading">
+          <div>
+            <div class="eyebrow">PERSONAL AGENDA</div>
+            <h2>My schedule</h2>
+          </div>
+          <span id="favoriteCount" class="count-badge">0</span>
+        </div>
+        <div id="mySchedule"></div>
+      </section>
+
+      <section id="postersView" class="view" data-view="posters">
+        <div class="view-heading">
+          <div>
+            <div class="eyebrow">TUESDAY · 18:00–20:00</div>
+            <h2>Poster session</h2>
+          </div>
+          <span class="small-muted">Staatsarchiv</span>
+        </div>
+
+        <div class="toolbar-card">
+          <label class="search-wrap">
+            <span class="search-icon">⌕</span>
+            <input id="posterSearch" type="search" placeholder="Search poster, abstract, author…" autocomplete="off">
+          </label>
+          <div class="chip-row" id="posterFilters">
+            <button class="chip active" data-category="all">All</button>
+            <button class="chip" data-category="Material Functionality">Functionality</button>
+            <button class="chip" data-category="Material Processing">Processing</button>
+            <button class="chip" data-category="Applications">Applications</button>
+          </div>
+        </div>
+
+        <div id="posterMeta" class="section-meta"></div>
+        <div id="posterList" class="poster-list"></div>
+      </section>
+
+      <section id="settingsView" class="view" data-view="settings">
+        <div class="view-heading">
+          <div>
+            <div class="eyebrow">PREFERENCES</div>
+            <h2>Settings</h2>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Appearance</h3>
+          <div class="setting-card">
+            <div>
+              <strong>Theme</strong>
+              <p>Dark mode uses a true black background.</p>
+            </div>
+            <select id="themeSelect" aria-label="Theme">
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+          <div class="setting-card">
+            <div>
+              <strong>Compact schedule</strong>
+              <p>Reduce card spacing so more of the program fits on screen.</p>
+            </div>
+            <button id="compactToggle" class="toggle" type="button" role="switch" aria-checked="false"><span></span></button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Time</h3>
+          <div class="setting-card">
+            <div>
+              <strong>Display times</strong>
+              <p>Program times are in Darmstadt local time.</p>
+            </div>
+            <select id="timeModeSelect" aria-label="Time display">
+              <option value="conference">Darmstadt</option>
+              <option value="device">My device</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Data</h3>
+          <div class="setting-card column">
+            <div>
+              <strong>Backup</strong>
+              <p>Favorites and preferences stay only in this browser unless you export them.</p>
+            </div>
+            <div class="button-row">
+              <button id="exportBtn" class="secondary-btn" type="button">Export JSON</button>
+              <button id="importBtn" class="secondary-btn" type="button">Import JSON</button>
+              <input id="importInput" type="file" accept="application/json" hidden>
+            </div>
+          </div>
+          <div class="setting-card">
+            <div>
+              <strong>Clear favorites</strong>
+              <p>Remove all starred talks and posters from this device.</p>
+            </div>
+            <button id="clearBtn" class="danger-btn" type="button">Clear</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>App</h3>
+          <div class="setting-card">
+            <div>
+              <strong>Install Memrisys 2026</strong>
+              <p id="installHelp">Install this planner on your home screen for app-like access.</p>
+            </div>
+            <button id="installBtn" class="secondary-btn" type="button">Install</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Source</h3>
+          <a class="source-card" href="./program.pdf" target="_blank" rel="noopener">
+            <div>
+              <strong>Open original program PDF</strong>
+              <p>14 pages · schedule + 104 posters</p>
+            </div>
+            <span>↗</span>
+          </a>
+        </div>
+
+        <p class="footer-note">Everything in the planner is stored locally in your browser. No account or backend is required.</p>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Main navigation">
+      <button class="nav-btn active" data-target="program"><span class="nav-icon">▦</span><span>Program</span></button>
+      <button class="nav-btn" data-target="my"><span class="nav-icon">★</span><span>My schedule</span></button>
+      <button class="nav-btn" data-target="posters"><span class="nav-icon">▤</span><span>Posters</span></button>
+      <button class="nav-btn" data-target="settings"><span class="nav-icon">⚙</span><span>Settings</span></button>
+    </nav>
+  </div>
+
+  <dialog id="detailModal" class="detail-modal">
+    <div class="modal-sheet">
+      <div class="modal-top">
+        <button id="modalClose" class="icon-btn ghost" type="button" aria-label="Close">×</button>
+        <button id="modalStar" class="star-btn large" type="button" aria-label="Toggle favorite">☆</button>
+      </div>
+      <div id="modalContent"></div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="./data.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
