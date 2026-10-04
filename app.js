@@ -22,6 +22,7 @@
   const posterById = new Map(DATA.posters.map(x => [x.id, x]));
   let currentModal = null;
   let deferredInstallPrompt = null;
+  let pendingPhotoImports = [];
 
   function loadState() {
     try {
@@ -71,7 +72,7 @@
     });
   }
 
-  async function storePhoto(type, id, file) {
+  async function storePhoto(type, id, file, metadata={}) {
     const blob = await prepareImageBlob(file);
     const db = await openPhotoDb();
     return new Promise((resolve, reject) => {
@@ -83,6 +84,9 @@
         name: file.name || "photo.jpg",
         originalType: file.type || blob.type || "image/jpeg",
         originalLastModified: file.lastModified || null,
+        captureDate: metadata.captureDate || null,
+        captureTime: metadata.captureTime || null,
+        timestampSource: metadata.timestampSource || null,
         addedAt: Date.now(),
         blob
       });
@@ -136,6 +140,304 @@
     }
   }
 
+  function readAscii(view, offset, length) {
+    if (offset < 0 || offset + length > view.byteLength) return "";
+    let out = "";
+    for (let i=0; i<length; i++) {
+      const code = view.getUint8(offset+i);
+      if (!code) break;
+      out += String.fromCharCode(code);
+    }
+    return out;
+  }
+
+  function parseExifWallClock(raw) {
+    const m = String(raw || "").match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (!m) return null;
+    return {date:`${m[1]}-${m[2]}-${m[3]}`, time:`${m[4]}:${m[5]}`, seconds:Number(m[6]||0)};
+  }
+
+  async function readExifCaptureTime(file) {
+    if (!/jpe?g/i.test(file.type || file.name || "")) return null;
+    try {
+      const buffer = await file.slice(0, 1024 * 1024).arrayBuffer();
+      const view = new DataView(buffer);
+      if (view.byteLength < 4 || view.getUint16(0, false) !== 0xFFD8) return null;
+      let pos = 2;
+      while (pos + 4 <= view.byteLength) {
+        if (view.getUint8(pos) !== 0xFF) { pos++; continue; }
+        const marker = view.getUint8(pos + 1);
+        pos += 2;
+        if (marker === 0xDA || marker === 0xD9) break;
+        if (pos + 2 > view.byteLength) break;
+        const length = view.getUint16(pos, false);
+        if (length < 2 || pos + length > view.byteLength) break;
+        if (marker === 0xE1) {
+          const payload = pos + 2;
+          if (readAscii(view, payload, 4) === "Exif") {
+            const tiff = payload + 6;
+            if (tiff + 8 > view.byteLength) return null;
+            const order = view.getUint16(tiff, false);
+            const little = order === 0x4949;
+            if (!little && order !== 0x4D4D) return null;
+            const get16 = off => view.getUint16(off, little);
+            const get32 = off => view.getUint32(off, little);
+            const valueString = entry => {
+              const type = get16(entry + 2);
+              const count = get32(entry + 4);
+              if (type !== 2 || !count) return "";
+              const valuePos = count <= 4 ? entry + 8 : tiff + get32(entry + 8);
+              return readAscii(view, valuePos, Math.min(count, 64));
+            };
+            const findTag = (ifdPos, wanted) => {
+              if (ifdPos < 0 || ifdPos + 2 > view.byteLength) return null;
+              const count = get16(ifdPos);
+              for (let i=0; i<count; i++) {
+                const entry = ifdPos + 2 + i*12;
+                if (entry + 12 > view.byteLength) break;
+                if (get16(entry) === wanted) return entry;
+              }
+              return null;
+            };
+            const ifd0 = tiff + get32(tiff + 4);
+            const exifPtrEntry = findTag(ifd0, 0x8769);
+            if (exifPtrEntry) {
+              const exifIfd = tiff + get32(exifPtrEntry + 8);
+              for (const tag of [0x9003, 0x9004]) {
+                const entry = findTag(exifIfd, tag);
+                const parsed = entry ? parseExifWallClock(valueString(entry)) : null;
+                if (parsed) return parsed;
+              }
+            }
+            const dateEntry = findTag(ifd0, 0x0132);
+            const parsed = dateEntry ? parseExifWallClock(valueString(dateEntry)) : null;
+            if (parsed) return parsed;
+          }
+        }
+        pos += length;
+      }
+    } catch (err) {
+      console.warn("Could not read EXIF timestamp", err);
+    }
+    return null;
+  }
+
+  function berlinPartsFromDate(date) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Berlin",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+    }).formatToParts(date);
+    const get = t => parts.find(p => p.type === t)?.value || "";
+    return {date:`${get("year")}-${get("month")}-${get("day")}`, time:`${get("hour")}:${get("minute")}`};
+  }
+
+  async function captureInfoForFile(file) {
+    const exif = await readExifCaptureTime(file);
+    if (exif) return {...exif, source:"camera metadata"};
+    if (file.lastModified) {
+      const p = berlinPartsFromDate(new Date(file.lastModified));
+      return {...p, seconds:0, source:"file date"};
+    }
+    return {date:null, time:null, seconds:0, source:"unknown"};
+  }
+
+  function minuteDistanceToEvent(minute, event) {
+    const start = timeValue(event.start);
+    const end = timeValue(event.end);
+    if (minute < start) return start - minute;
+    if (minute > end) return minute - end;
+    return 0;
+  }
+
+  function assignmentKey(type, id) {
+    return `${type}:${id}`;
+  }
+
+  function assignmentFromKey(key) {
+    const [type, ...rest] = String(key || "").split(":");
+    return {type, id:rest.join(":")};
+  }
+
+  function assignmentLabel(type, id) {
+    if (type === "poster") {
+      const p = posterById.get(id);
+      return p ? `Poster #${p.number} · ${p.title}` : "Poster";
+    }
+    const e = byId.get(id);
+    if (!e) return "Programme item";
+    const session = e.session ? `${e.session} · ` : "";
+    const room = e.room ? ` · ${e.room[0].toUpperCase()+e.room.slice(1)}` : "";
+    return `${e.start} · ${session}${e.title}${room}`;
+  }
+
+  function photoSuggestions(capture) {
+    if (!capture?.date || !capture?.time) return [];
+    const minute = timeValue(capture.time);
+    const dateEvents = DATA.schedule.filter(e => e.date === capture.date && !["break","meal"].includes(e.kind));
+    const posterSession = dateEvents.find(e => e.kind === "poster-session" && minute >= timeValue(e.start)-5 && minute <= timeValue(e.end)+5);
+    const ranked = [];
+
+    if (posterSession) {
+      for (const id of state.posterFavorites) {
+        const p = posterById.get(id);
+        if (p) ranked.push({type:"poster", id:p.id, score:1600, reason:"Starred poster during poster session"});
+      }
+      ranked.push({type:"event", id:posterSession.id, score:1000, reason:"Poster session at this time"});
+    }
+
+    for (const e of dateEvents) {
+      if (e.kind === "poster-session") continue;
+      const distance = minuteDistanceToEvent(minute, e);
+      if (distance > 20) continue;
+      const inside = distance === 0;
+      let score = inside ? 1000 : 700 - distance * 18;
+      if (state.favorites.includes(e.id)) score += 350;
+      if (["talk","plenary","special"].includes(e.kind)) score += 40;
+      ranked.push({
+        type:"event", id:e.id, score,
+        reason: state.favorites.includes(e.id)
+          ? (inside ? "Starred item happening at this time" : "Starred item near this time")
+          : (inside ? "Happening at this time" : `${distance} min from capture time`)
+      });
+    }
+
+    const seen = new Set();
+    return ranked
+      .sort((a,b)=>b.score-a.score)
+      .filter(x => {
+        const key = assignmentKey(x.type,x.id);
+        if (seen.has(key)) return false;
+        seen.add(key); return true;
+      })
+      .slice(0,8);
+  }
+
+  function importSelectOptions(item) {
+    const suggestedKeys = new Set(item.suggestions.map(x=>assignmentKey(x.type,x.id)));
+    let html = `<option value="">Do not import this photo</option>`;
+    if (item.suggestions.length) {
+      html += `<optgroup label="Suggested">` + item.suggestions.map(x => {
+        const key = assignmentKey(x.type,x.id);
+        return `<option value="${esc(key)}" ${key===item.selectedKey?"selected":""}>${esc(assignmentLabel(x.type,x.id))}</option>`;
+      }).join("") + `</optgroup>`;
+    }
+    if (item.capture.date) {
+      const others = DATA.schedule
+        .filter(e => e.date===item.capture.date && !["break","meal","poster-session"].includes(e.kind))
+        .filter(e => !suggestedKeys.has(assignmentKey("event",e.id)))
+        .sort((a,b)=>timeValue(a.start)-timeValue(b.start) || a.track-b.track);
+      if (others.length) {
+        html += `<optgroup label="Other programme items that day">` + others.map(e =>
+          `<option value="event:${esc(e.id)}">${esc(assignmentLabel("event",e.id))}</option>`
+        ).join("") + `</optgroup>`;
+      }
+      if (item.capture.date === "2026-10-06" && state.posterFavorites.length) {
+        const posters = state.posterFavorites.map(id=>posterById.get(id)).filter(Boolean)
+          .filter(p => !suggestedKeys.has(assignmentKey("poster",p.id)));
+        if (posters.length) {
+          html += `<optgroup label="Other starred posters">` + posters.map(p =>
+            `<option value="poster:${esc(p.id)}">${esc(assignmentLabel("poster",p.id))}</option>`
+          ).join("") + `</optgroup>`;
+        }
+      }
+    }
+    return html;
+  }
+
+  function clearPendingPhotoImports() {
+    for (const item of pendingPhotoImports) {
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    }
+    pendingPhotoImports = [];
+    const list = $("#photoImportList");
+    if (list) list.innerHTML = "";
+  }
+
+  function closePhotoImportDialog() {
+    const dlg = $("#photoImportDialog");
+    if (dlg?.open) dlg.close();
+    clearPendingPhotoImports();
+  }
+
+  function renderPhotoImportReview() {
+    const list = $("#photoImportList");
+    if (!list) return;
+    if (!pendingPhotoImports.length) {
+      list.innerHTML = `<div class="photo-empty">No image files selected.</div>`;
+      return;
+    }
+    list.innerHTML = pendingPhotoImports.map((item,index) => {
+      const stamp = item.capture.date && item.capture.time
+        ? `${item.capture.date} · ${item.capture.time}`
+        : "No usable timestamp";
+      const top = item.suggestions[0];
+      const reason = top ? top.reason : "No programme match within 20 minutes";
+      return `<article class="photo-import-item" data-import-index="${index}">
+        <img src="${item.previewUrl}" alt="Selected conference photo">
+        <div class="photo-import-copy">
+          <strong>${esc(item.file.name || `Photo ${index+1}`)}</strong>
+          <div class="photo-import-time">${esc(stamp)} · ${esc(item.capture.source)}</div>
+          <div class="photo-import-reason">${esc(reason)}</div>
+          <label>
+            <span>Assign to</span>
+            <select class="photo-assignment-select" data-import-select="${index}">${importSelectOptions(item)}</select>
+          </label>
+        </div>
+      </article>`;
+    }).join("");
+  }
+
+  async function beginSmartPhotoImport(files) {
+    clearPendingPhotoImports();
+    const images = [...(files || [])].filter(f => f.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name || ""));
+    if (!images.length) return toast("Choose image files");
+    toast(images.length === 1 ? "Reading photo time…" : `Reading ${images.length} photo times…`);
+    for (const file of images) {
+      const capture = await captureInfoForFile(file);
+      const suggestions = photoSuggestions(capture);
+      pendingPhotoImports.push({
+        file,
+        capture,
+        suggestions,
+        selectedKey: suggestions[0] ? assignmentKey(suggestions[0].type,suggestions[0].id) : "",
+        previewUrl: URL.createObjectURL(file)
+      });
+    }
+    renderPhotoImportReview();
+    $("#photoImportDialog").showModal();
+  }
+
+  async function saveSmartPhotoAssignments() {
+    if (!pendingPhotoImports.length) return;
+    const saveItems = pendingPhotoImports.map((item,index) => {
+      const select = $(`[data-import-select="${index}"]`);
+      return {...item, selectedKey:select?.value || ""};
+    }).filter(x=>x.selectedKey);
+    if (!saveItems.length) return toast("Choose at least one assignment");
+    $("#photoImportSave").disabled = true;
+    toast(saveItems.length === 1 ? "Saving photo…" : `Saving ${saveItems.length} photos…`);
+    try {
+      for (const item of saveItems) {
+        const target = assignmentFromKey(item.selectedKey);
+        await storePhoto(target.type, target.id, item.file, {
+          captureDate:item.capture.date,
+          captureTime:item.capture.time,
+          timestampSource:item.capture.source
+        });
+      }
+      const skipped = pendingPhotoImports.length - saveItems.length;
+      closePhotoImportDialog();
+      toast(skipped ? `${saveItems.length} saved · ${skipped} skipped` : `${saveItems.length} photo${saveItems.length===1?"":"s"} assigned`);
+    } catch (err) {
+      console.error(err);
+      toast("Could not save all photos");
+    } finally {
+      const btn = $("#photoImportSave");
+      if (btn) btn.disabled = false;
+    }
+  }
+
   function photoSectionHtml() {
     return `<section class="photo-section">
       <div class="photo-section-head">
@@ -177,7 +479,14 @@
     if (!images.length) return toast("Choose image files");
     toast(images.length === 1 ? "Adding photo…" : `Adding ${images.length} photos…`);
     try {
-      for (const file of images) await storePhoto(currentModal.type, currentModal.id, file);
+      for (const file of images) {
+        const capture = await captureInfoForFile(file);
+        await storePhoto(currentModal.type, currentModal.id, file, {
+          captureDate:capture.date,
+          captureTime:capture.time,
+          timestampSource:capture.source
+        });
+      }
       await renderModalPhotos();
       toast(images.length === 1 ? "Photo added" : `${images.length} photos added`);
     } catch (err) {
@@ -633,6 +942,22 @@
       state.posterCategory=btn.dataset.category; saveState(); syncSettings(); renderPosters();
     }));
     $$(".nav-btn").forEach(btn=>btn.addEventListener("click",()=>showView(btn.dataset.target)));
+
+    $("#smartPhotoImportBtn").addEventListener("click",()=>$("#smartPhotoInput").click());
+    $("#smartPhotoInput").addEventListener("change",async e=>{
+      await beginSmartPhotoImport(e.target.files);
+      e.target.value="";
+    });
+    $("#photoImportList").addEventListener("change",e=>{
+      const select=e.target.closest("[data-import-select]");
+      if (!select) return;
+      const item=pendingPhotoImports[Number(select.dataset.importSelect)];
+      if (item) item.selectedKey=select.value;
+    });
+    $("#photoImportSave").addEventListener("click",saveSmartPhotoAssignments);
+    $("#photoImportCancel").addEventListener("click",closePhotoImportDialog);
+    $("#photoImportClose").addEventListener("click",closePhotoImportDialog);
+    $("#photoImportDialog").addEventListener("click",e=>{ if(e.target===$("#photoImportDialog")) closePhotoImportDialog(); });
 
     $("#nowBtn").addEventListener("click",()=>{
       state.day=detectConferenceDay(); saveState(); renderDays(); renderProgram(); showView("program");

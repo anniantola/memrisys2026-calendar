@@ -172,3 +172,31 @@ html.compact .time-group{gap:5px}
 
 .secondary-btn:disabled{opacity:.55;cursor:default}
 \n\n/* Presentation photos */\n.photo-section{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}\n.photo-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}\n.photo-section-head h3{margin:0}\n.photo-section-note{font-size:11px;color:var(--muted);line-height:1.4;margin-bottom:10px}\n.photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}\n.photo-item{position:relative;aspect-ratio:1;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;overflow:hidden}\n.photo-thumb{display:block;width:100%;height:100%;object-fit:cover;border:0;padding:0;background:transparent;cursor:pointer}\n.photo-delete{position:absolute;right:5px;top:5px;width:28px;height:28px;border:0;border-radius:999px;background:rgba(0,0,0,.7);color:white;font-size:18px;line-height:1;display:grid;place-items:center;cursor:pointer}\n.photo-empty{border:1px dashed var(--line);border-radius:12px;padding:14px;text-align:center;color:var(--muted);font-size:12px;line-height:1.4}\n.photo-loading{color:var(--muted);font-size:12px;padding:8px 0}\n.photo-viewer{border:0;padding:0;background:transparent;width:100%;height:100%;max-width:none;max-height:none}\n.photo-viewer::backdrop{background:rgba(0,0,0,.92)}\n.photo-viewer-shell{width:100%;height:100%;display:grid;place-items:center;position:relative;padding:44px 12px 18px}\n.photo-viewer img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}\n.photo-viewer-close{position:absolute;right:14px;top:12px;border:0;background:rgba(255,255,255,.14);color:white;width:38px;height:38px;border-radius:999px;font-size:28px;line-height:1}\n@media (max-width:430px){.photo-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}\n.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+
+
+/* Timestamp-based photo import */
+.smart-photo-card{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 16px;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px}
+.smart-photo-card strong{display:block;font-size:15px;margin-top:2px}
+.smart-photo-card p{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.45;max-width:560px}
+.photo-import-sheet{max-height:92vh}
+.modal-spacer{width:40px;height:40px}
+.photo-import-intro{font-size:12px;line-height:1.5;color:var(--muted);margin:8px 0 14px}
+.photo-import-list{display:grid;gap:10px}
+.photo-import-item{display:grid;grid-template-columns:92px 1fr;gap:12px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}
+.photo-import-item>img{width:92px;height:92px;object-fit:cover;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+.photo-import-copy{min-width:0}
+.photo-import-copy>strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.photo-import-time{font-size:11px;color:var(--muted);margin-top:3px}
+.photo-import-reason{font-size:11px;font-weight:700;margin:5px 0 8px}
+.photo-import-copy label{display:grid;gap:4px}
+.photo-import-copy label>span{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:800}
+.photo-assignment-select{width:100%;min-width:0}
+.photo-import-actions{position:sticky;bottom:calc(-22px - env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1.4fr;gap:8px;margin:16px -18px calc(-22px - env(safe-area-inset-bottom));padding:12px 18px calc(12px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--surface) 95%,transparent);border-top:1px solid var(--line);backdrop-filter:blur(14px)}
+.primary-btn{border:0;background:var(--accent);color:white;border-radius:11px;padding:11px 14px;font-weight:800;cursor:pointer}
+.primary-btn:disabled{opacity:.55;cursor:default}
+@media (max-width:520px){
+  .smart-photo-card{align-items:stretch;flex-direction:column}
+  .smart-photo-card .secondary-btn{width:100%}
+  .photo-import-item{grid-template-columns:72px 1fr}
+  .photo-import-item>img{width:72px;height:72px}
+}

@@ -55,6 +55,14 @@
           </div>
           <span id="favoriteCount" class="count-badge">0</span>
         </div>
+        <div class="smart-photo-card">
+          <div>
+            <div class="eyebrow">CAMERA ROLL</div>
+            <strong>Match photos by capture time</strong>
+            <p>Select conference photos from your phone. The app compares their timestamps with the programme and suggests starred presentations first.</p>
+          </div>
+          <button id="smartPhotoImportBtn" class="secondary-btn" type="button">Import photos by time</button>
+        </div>
         <div id="mySchedule"></div>
       </section>
 
@@ -196,6 +204,23 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <input id="photoInput" type="file" accept="image/*" multiple hidden>
+  <input id="smartPhotoInput" type="file" accept="image/*" multiple hidden>
+
+  <dialog id="photoImportDialog" class="detail-modal">
+    <div class="modal-sheet photo-import-sheet">
+      <div class="modal-top">
+        <button id="photoImportClose" class="icon-btn ghost" type="button" aria-label="Close">×</button>
+        <strong>Match photos by time</strong>
+        <span class="modal-spacer" aria-hidden="true"></span>
+      </div>
+      <p class="photo-import-intro">Suggestions use camera capture time when available, otherwise the file date. Starred programme items are ranked first when sessions overlap.</p>
+      <div id="photoImportList" class="photo-import-list"></div>
+      <div class="photo-import-actions">
+        <button id="photoImportCancel" class="secondary-btn" type="button">Cancel</button>
+        <button id="photoImportSave" class="primary-btn" type="button">Save assignments</button>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="photoViewer" class="photo-viewer">
     <div class="photo-viewer-shell">
