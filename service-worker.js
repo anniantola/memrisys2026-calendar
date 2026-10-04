@@ -1,4 +1,4 @@
-const CACHE = "memrisys2026-calendar-v1";
+const CACHE = "memrisys2026-calendar-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -35,10 +35,22 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
 
+  const url = new URL(event.request.url);
+
+  // Always fetch PWA identity/update files fresh.
+  if (
+    url.pathname.endsWith("/manifest.webmanifest") ||
+    url.pathname.endsWith("/service-worker.js")
+  ) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request)
-        .catch(() => caches.match("./index.html"))
+      fetch(event.request).catch(() => caches.match("./index.html"))
     );
     return;
   }
