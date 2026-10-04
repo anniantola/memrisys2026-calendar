@@ -378,7 +378,8 @@
 
   function importSelectOptions(item) {
     const suggestedKeys = new Set(item.suggestions.map(x=>assignmentKey(x.type,x.id)));
-    let html = `<option value="">Do not import this photo</option>`;
+    let html = `<option value="unclassified:unclassified" ${item.selectedKey==="unclassified:unclassified"?"selected":""}>Unclassified</option>`;
+    html += `<option value="">Do not import this photo</option>`;
     if (item.suggestions.length) {
       html += `<optgroup label="Suggested">` + item.suggestions.map(x => {
         const key = assignmentKey(x.type,x.id);
@@ -435,7 +436,7 @@
         ? `${item.capture.date} · ${item.capture.time}`
         : "No usable timestamp";
       const top = item.suggestions[0];
-      const reason = top ? top.reason : "No programme match within 20 minutes";
+      const reason = top ? top.reason : "No session match — will import as Unclassified";
       return `<article class="photo-import-item" data-import-index="${index}">
         <img src="${item.previewUrl}" alt="Selected conference photo">
         <div class="photo-import-copy">
@@ -463,7 +464,9 @@
         file,
         capture,
         suggestions,
-        selectedKey: suggestions[0] ? assignmentKey(suggestions[0].type,suggestions[0].id) : "",
+        selectedKey: suggestions[0]
+          ? assignmentKey(suggestions[0].type,suggestions[0].id)
+          : assignmentKey("unclassified","unclassified"),
         previewUrl: URL.createObjectURL(file)
       });
     }
@@ -490,9 +493,16 @@
         });
       }
       const skipped = pendingPhotoImports.length - saveItems.length;
+      const unclassified = saveItems.filter(item => item.selectedKey === "unclassified:unclassified").length;
       closePhotoImportDialog();
       await renderGallery();
-      toast(skipped ? `${saveItems.length} saved · ${skipped} skipped` : `${saveItems.length} photo${saveItems.length===1?"":"s"} assigned`);
+      if (skipped) {
+        toast(`${saveItems.length} saved · ${skipped} skipped`);
+      } else if (unclassified) {
+        toast(`${saveItems.length} saved · ${unclassified} unclassified`);
+      } else {
+        toast(`${saveItems.length} photo${saveItems.length===1?"":"s"} assigned`);
+      }
     } catch (err) {
       console.error(err);
       toast("Could not save all photos");
@@ -503,6 +513,13 @@
   }
 
   function galleryOwnerDetails(photo) {
+    if (photo.ownerType === "unclassified") {
+      return {
+        title: "Unclassified",
+        meta: "Photos without a matching conference session",
+        sortKey: "9999|unclassified"
+      };
+    }
     if (photo.ownerType === "poster") {
       const p = posterById.get(photo.ownerId);
       return {
@@ -1128,7 +1145,9 @@
       if (thumb) { openStoredPhoto(thumb.dataset.galleryPhoto); return; }
       const owner = e.target.closest("[data-gallery-owner-type]");
       if (owner) {
-        owner.dataset.galleryOwnerType === "poster" ? openPoster(owner.dataset.galleryOwnerId) : openEvent(owner.dataset.galleryOwnerId);
+        const type = owner.dataset.galleryOwnerType;
+        if (type === "unclassified") return;
+        type === "poster" ? openPoster(owner.dataset.galleryOwnerId) : openEvent(owner.dataset.galleryOwnerId);
       }
     });
 
