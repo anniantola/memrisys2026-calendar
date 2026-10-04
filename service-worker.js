@@ -1,14 +1,14 @@
-const CACHE = "memrisys2026-calendar-v12";
+const CACHE = "memrisys2026-calendar-v13";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./data.js",
-  "./manifest.webmanifest",
-  "./icon-180.png",
-  "./icon-192.png",
-  "./icon-512.png",
+  "./manifest-v13.webmanifest",
+  "./memrisys-icon-v13-180.png",
+  "./memrisys-icon-v13-192.png",
+  "./memrisys-icon-v13-512.png",
   "./program.pdf"
 ];
 
@@ -39,7 +39,7 @@ self.addEventListener("fetch", event => {
 
   // Always fetch PWA identity/update files fresh.
   if (
-    url.pathname.endsWith("/manifest.webmanifest") ||
+    url.pathname.endsWith(".webmanifest") ||
     url.pathname.endsWith("/service-worker.js")
   ) {
     event.respondWith(
