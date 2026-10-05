@@ -13,7 +13,7 @@
   <link rel="manifest" href="./manifest-v13.webmanifest">
   <link rel="icon" href="./memrisys-icon-v13-192.png">
   <link rel="apple-touch-icon" href="./memrisys-icon-v13-180.png">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles-v21.css">
 </head>
 <body>
   <div class="app-shell">
@@ -218,6 +218,7 @@
 
         <div class="settings-section">
           <h3>App</h3>
+          <div class="build-version">Build v21 · photo titles + photo notes</div>
           <div class="setting-card">
             <div>
               <strong>Install Memrisys 2026</strong>
@@ -315,14 +316,25 @@
         <div id="photoViewerCounter" class="photo-viewer-counter" aria-live="polite"></div>
         <button id="photoViewerNext" class="photo-viewer-nav" type="button" aria-label="Next photo">›</button>
       </div>
-      <div id="photoViewerTitleBar" class="photo-viewer-titlebar" hidden>
-        <label for="photoViewerTitle">Photo title</label>
-        <input id="photoViewerTitle" type="text" maxlength="140" placeholder="Add a custom title…" autocomplete="off">
+      <div id="photoViewerMeta" class="photo-viewer-meta">
+        <div class="photo-viewer-meta-head">
+          <strong>Photo details</strong>
+          <span id="photoViewerOwner" class="photo-viewer-owner"></span>
+        </div>
+        <div class="photo-viewer-field">
+          <label for="photoViewerTitle">Title</label>
+          <input id="photoViewerTitle" type="text" maxlength="140" placeholder="Add a title for this photo…" autocomplete="off">
+        </div>
+        <div class="photo-viewer-field">
+          <label for="photoViewerNote">Notes</label>
+          <textarea id="photoViewerNote" rows="3" maxlength="2000" placeholder="Write notes about this photo…" spellcheck="true"></textarea>
+        </div>
+        <div id="photoViewerSaveStatus" class="photo-viewer-save-status">Saved automatically</div>
       </div>
     </div>
   </div>
 
   <script src="./data.js"></script>
-  <script src="./app.js"></script>
+  <script src="./app-v21.js"></script>
 </body>
 </html>

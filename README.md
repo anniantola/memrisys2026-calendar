@@ -1,21 +1,39 @@
-# MEMRISYS 2026 — camera capture
+# MEMRISYS 2026 — v21 forced-update build
 
-Each talk/poster now has two photo actions:
+This build is deliberately redundant to defeat the stale PWA asset problem.
 
-- **Take photo** — opens the phone camera (rear/environment camera where supported) and attaches the resulting image directly to that presentation.
-- **Add existing** — keeps the existing gallery/file-picker flow.
+## Photo editing
+Open **any photo** (assigned to a presentation/poster or Unclassified). Under the image you should see:
 
-After a camera capture, the app stores its own compressed copy + thumbnail in IndexedDB and also makes a best-effort request to save the original image as a normal file on the phone. On Android/Chrome this normally appears in Downloads and may also be indexed by the phone's Photos/Gallery app. Some camera apps already save captures to the normal camera roll themselves.
+**Photo details**
+- Title
+- Notes
+- attached presentation/poster
+- autosave status
 
-A browser/PWA cannot reliably write directly into the system camera-roll folder on every Android device without native-app permissions, so the phone copy is best-effort rather than guaranteed.
+## How to verify the update
+Go to **Settings → App**. It should visibly say:
 
-Service-worker cache: v18.
+`Build v21 · photo titles + photo notes`
+
+If you do not see that text, the phone is still running an older deployed build.
+
+## Why this update is different
+The exact same v21 JavaScript/CSS/service-worker content is published under all of these names:
+
+- `app.js`
+- `app-v20.js`
+- `app-v21.js`
+- `styles.css`
+- `styles-v20.css`
+- `styles-v21.css`
+- `service-worker.js`
+- `service-worker-v20.js`
+- `service-worker-v21.js`
+
+So whether the installed PWA is still using the old index, the v20 index, or the v21 index, it receives the current code once these files are deployed.
+
+The service worker also now fetches HTML/JS/CSS network-first to make future code updates less sticky.
 
 ## Deployment
-Replace:
-- `index.html`
-- `app.js`
-- `styles.css`
-- `service-worker.js`
-
-`README.md` is optional.
+Upload **all files in the UPDATE zip** to the repository root and overwrite existing files when names already exist.
