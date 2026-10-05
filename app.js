@@ -1,6 +1,6 @@
 
 (() => {
-  const APP_BUILD = "v24";
+  const APP_BUILD = "v25";
   const DATA = window.CONFERENCE_DATA;
   const STORAGE_KEY = "memristorCalendarStateV1";
   const PHOTO_DB = "memrisysPhotoDB";
@@ -32,6 +32,7 @@
   let photoViewerIndex = -1;
   let galleryPhotoCount = 0;
   let galleryNoteCount = 0;
+  let galleryPhotoQuery = "";
   let galleryNoteQuery = "";
 
   function loadState() {
@@ -803,19 +804,39 @@
     clearGalleryObjectUrls();
     target.innerHTML = `<div class="photo-loading">Loading gallery…</div>`;
     try {
-      const photos = await getAllPhotos();
-      for (const photo of photos) {
+      const allPhotos = await getAllPhotos();
+      for (const photo of allPhotos) {
         if (!photo.thumbnailBlob) await ensurePhotoThumbnail(photo);
       }
-      galleryPhotoCount = photos.length;
+
+      galleryPhotoCount = allPhotos.length;
       count.textContent = state.galleryMode === "notes" ? galleryNoteCount : galleryPhotoCount;
-      meta.innerHTML = `<span>${photos.length} photo${photos.length===1?"":"s"}</span><span>Stored locally on this device</span>`;
+
+      const query = String(galleryPhotoQuery || "").trim();
+      const q = query.toLowerCase();
+      const photos = q ? allPhotos.filter(photo =>
+        [photo.customTitle, photo.customNote]
+          .some(value => String(value || "").toLowerCase().includes(q))
+      ) : allPhotos;
+
+      meta.innerHTML = query
+        ? `<span>${photos.length} result${photos.length===1?"":"s"}</span><span>${galleryPhotoCount} total photos</span>`
+        : `<span>${allPhotos.length} photo${allPhotos.length===1?"":"s"}</span><span>Stored locally on this device</span>`;
+
       renderGalleryNotes();
-      if (!photos.length) {
+
+      if (!allPhotos.length) {
         target.innerHTML = `<div class="empty-state"><strong>No photos yet</strong>Import conference photos by time, or add them from an individual talk or poster.</div>`;
         syncGalleryMode();
         return;
       }
+
+      if (!photos.length) {
+        target.innerHTML = `<div class="empty-state"><strong>No matching photos</strong>Try another word from a photo title or photo note.</div>`;
+        syncGalleryMode();
+        return;
+      }
+
       const groups = new Map();
       for (const photo of photos) {
         if (!groups.has(photo.ownerKey)) groups.set(photo.ownerKey, []);
@@ -839,8 +860,8 @@
               ${stamp ? `<span class="gallery-thumb-time">${esc(stamp)}</span>` : ""}
             </button>
             <button class="gallery-delete" type="button" data-gallery-delete="${photo.id}" aria-label="Delete photo">×</button>
-            ${hasMeta ? `<div class="gallery-thumb-title">${esc(customTitle || (photo.ownerType === "unclassified" ? "Untitled photo" : "Photo"))}</div>` : ""}
-            ${customNote ? `<div class="gallery-thumb-note">${esc(customNote)}</div>` : ""}
+            ${hasMeta ? `<div class="gallery-thumb-title">${highlightSearch(customTitle || (photo.ownerType === "unclassified" ? "Untitled photo" : "Photo"), query)}</div>` : ""}
+            ${customNote ? `<div class="gallery-thumb-note">${highlightSearch(noteSnippet(customNote, query, 180), query)}</div>` : ""}
           </div>`;
         }).join("");
         return `<section class="gallery-group${unclassifiedGroup ? " gallery-group-unclassified" : ""}">
@@ -2117,6 +2138,13 @@
       syncGalleryMode();
     }));
 
+    let galleryPhotoSearchTimer = null;
+    $("#galleryPhotoSearch").addEventListener("input", e => {
+      galleryPhotoQuery = e.target.value;
+      clearTimeout(galleryPhotoSearchTimer);
+      galleryPhotoSearchTimer = setTimeout(() => renderGallery(), 120);
+    });
+
     $("#galleryNoteSearch").addEventListener("input", e => {
       galleryNoteQuery = e.target.value;
       renderGalleryNotes();
@@ -2409,7 +2437,7 @@
     renderGallery();
     showView(state.view || "program");
     updateInstallUI();
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker-v24.js", { scope: "./", updateViaCache: "none" }).catch(()=>{});
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker-v25.js", { scope: "./", updateViaCache: "none" }).catch(()=>{});
   }
 
   window.addEventListener("beforeinstallprompt", event => {

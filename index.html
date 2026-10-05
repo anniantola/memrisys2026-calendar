@@ -13,7 +13,7 @@
   <link rel="manifest" href="./manifest-v13.webmanifest">
   <link rel="icon" href="./memrisys-icon-v13-192.png">
   <link rel="apple-touch-icon" href="./memrisys-icon-v13-180.png">
-  <link rel="stylesheet" href="./styles-v24.css">
+  <link rel="stylesheet" href="./styles-v25.css">
 </head>
 <body>
   <div class="app-shell">
@@ -76,6 +76,11 @@
         </div>
 
         <div id="galleryPhotosPanel" class="gallery-panel">
+          <label class="search-wrap gallery-photo-search">
+            <span class="search-icon">⌕</span>
+            <input id="galleryPhotoSearch" type="search" placeholder="Search photo titles and notes…" autocomplete="off">
+          </label>
+
           <div class="gallery-import-card">
             <div>
               <strong>Import photos by time</strong>
@@ -218,7 +223,7 @@
 
         <div class="settings-section">
           <h3>App</h3>
-          <div class="build-version">Build v24 · Now jumps to current slot</div>
+          <div class="build-version">Build v25 · searchable photo titles + notes</div>
           <div class="setting-card">
             <div>
               <strong>Install Memrisys 2026</strong>
@@ -350,7 +355,7 @@
     </div>
   </div>
 
-  <script src="./data-v24.js"></script>
-  <script src="./app-v24.js"></script>
+  <script src="./data-v25.js"></script>
+  <script src="./app-v25.js"></script>
 </body>
 </html>

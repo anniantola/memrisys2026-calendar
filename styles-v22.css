@@ -728,3 +728,14 @@ html[data-theme="dark"] .gallery-note-text{
   0%{box-shadow:0 0 0 4px var(--accent)}
   100%{box-shadow:0 0 0 2px var(--accent)}
 }
+
+
+/* v25 photo metadata search */
+.gallery-photo-search{margin:0 0 12px}
+.gallery-thumb-title mark,
+.gallery-thumb-note mark{
+  padding:0 1px;
+  border-radius:3px;
+  background:rgba(255,210,65,.38);
+  color:inherit;
+}

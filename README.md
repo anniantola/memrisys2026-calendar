@@ -1,20 +1,21 @@
-# MEMRISYS 2026 — current-slot navigation v24
+# MEMRISYS 2026 — photo search v25
 
-The top **Now** button now does more than select today's conference day.
+The **Photos** side of Gallery now has the same search concept as the Notes side.
 
-When pressed it:
-- switches to the **Program** page,
-- selects the current conference day in Darmstadt,
-- clears programme search and room filtering so parallel talks are not hidden,
-- finds the programme item(s) happening at the current Darmstadt time,
-- scrolls directly to that time slot,
-- briefly highlights the slot.
+Search covers each photo's:
+- custom **Title**
+- per-photo **Notes**
 
-If the conference is currently between programme items, it jumps to the **next** scheduled slot instead.
+Behavior:
+- only matching photos remain visible,
+- presentation/poster grouping is preserved,
+- matching words are highlighted in photo titles and note previews,
+- the Gallery summary shows `X results · Y total photos`,
+- an empty result gives a clear `No matching photos` message.
 
-The status card (for example **Happening now**) is now tappable and performs exactly the same action.
+Search does not use the presentation title or speaker; it is deliberately limited to the metadata written for the photo itself, as requested.
 
-Build: v24.
+Build: v25.
 
 ## Deploy
 Upload all files in the UPDATE zip to the repository root and overwrite matching files.
