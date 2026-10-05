@@ -1,20 +1,29 @@
-# MEMRISYS 2026 — Unclassified override v26
+# MEMRISYS 2026 conference app
 
-Timestamp matching is now only a suggestion.
+This is the cleaned, unversioned file layout.
 
-During **Import photos by time**, every photo has:
-- the normal assignment dropdown, whose first option is **Unclassified — ignore time match**
-- a dedicated **Keep Unclassified** button
+## Current app files
+- `index.html`
+- `app.js`
+- `styles.css`
+- `service-worker.js`
+- `data.js`
+- `manifest.webmanifest`
+- `icon-180.png`
+- `icon-192.png`
+- `icon-512.png`
+- `share-qr.jpg`
+- `program.pdf`
+- `.github/workflows/deploy.yml`
 
-You can also change an already-saved photo later from **Photo details → Assignment**, including switching it to **Unclassified** without deleting/re-importing it.
-
-Build: v26.
+The app content/functionality corresponds to the latest v26 build, including:
+- Now → current conference day/time slot
+- verified conference locations
+- Gallery Photos / Notes
+- photo-title and photo-note search
+- direct camera capture
+- editable photo title/notes
+- explicit Unclassified assignment even when a timestamp matches a programme item
 
 ## Deploy
-Upload these files from the UPDATE ZIP to the repository root:
-- `index.html`
-- `app-v26.js`
-- `styles-v26.css`
-- `service-worker-v26.js`
-
-`README.md` is optional. Existing `data-v25.js` is intentionally reused because programme data did not change.
+Delete the old versioned app files from the repository, upload this package to the repository root, commit, and let GitHub Pages deploy.

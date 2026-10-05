@@ -1,14 +1,14 @@
-const CACHE = "memrisys2026-calendar-v25";
+const CACHE = "memrisys2026-calendar";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles-v25.css",
-  "./app-v25.js",
-  "./data-v25.js",
-  "./manifest-v13.webmanifest",
-  "./memrisys-icon-v13-180.png",
-  "./memrisys-icon-v13-192.png",
-  "./memrisys-icon-v13-512.png",
+  "./styles.css",
+  "./app.js",
+  "./data.js",
+  "./manifest.webmanifest",
+  "./icon-180.png",
+  "./icon-192.png",
+  "./icon-512.png",
   "./share-qr.jpg",
   "./program.pdf"
 ];
