@@ -1,6 +1,6 @@
 
 (() => {
-  const APP_BUILD = "v23";
+  const APP_BUILD = "v24";
   const DATA = window.CONFERENCE_DATA;
   const STORAGE_KEY = "memristorCalendarStateV1";
   const PHOTO_DB = "memrisysPhotoDB";
@@ -1131,6 +1131,79 @@
     return d ? d.day : 1;
   }
 
+  function currentTimeTarget() {
+    const now = conferenceNowParts();
+    const day = DATA.days.find(d => d.date === now.date);
+    if (!day) return null;
+
+    const minute = timeValue(now.time);
+    const events = DATA.schedule
+      .filter(e => e.day === day.day)
+      .sort((a,b) => timeValue(a.start)-timeValue(b.start) || a.track-b.track);
+
+    if (!events.length) return {day:day.day, start:null, mode:"none"};
+
+    const current = events.filter(e =>
+      timeValue(e.start) <= minute && minute < timeValue(e.end)
+    );
+
+    if (current.length) {
+      const start = current.reduce(
+        (earliest,e) => timeValue(e.start) < timeValue(earliest) ? e.start : earliest,
+        current[0].start
+      );
+      return {day:day.day, start, mode:"current"};
+    }
+
+    const next = events.find(e => timeValue(e.start) > minute);
+    if (next) return {day:day.day, start:next.start, mode:"next"};
+
+    return {day:day.day, start:events.at(-1).start, mode:"last"};
+  }
+
+  function scrollToProgramSlot(start, mode="current") {
+    if (!start) {
+      window.scrollTo({top:0, behavior:"smooth"});
+      return;
+    }
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const group = $(`#programList .time-group[data-start="${CSS.escape(start)}"]`);
+      if (!group) return;
+
+      $$("#programList .time-group.now-focus").forEach(el => el.classList.remove("now-focus"));
+      group.classList.add("now-focus");
+      group.scrollIntoView({behavior:"smooth", block:"center"});
+
+      window.setTimeout(() => group.classList.remove("now-focus"), 1800);
+
+      if (mode === "next") toast(`Next programme slot · ${start}`);
+      else if (mode === "last") toast(`Last programme slot · ${start}`);
+    }));
+  }
+
+  function jumpToNow() {
+    const target = currentTimeTarget();
+
+    // Outside conference dates, preserve the old behavior of taking the user
+    // to the closest/default conference day rather than failing silently.
+    const day = target?.day || detectConferenceDay();
+
+    // Current-time navigation should never be hidden by a search or room filter.
+    const search = $("#programSearch");
+    if (search) search.value = "";
+    state.room = "all";
+    state.day = day;
+    saveState();
+
+    renderDays();
+    renderProgram();
+    showView("program");
+
+    if (target?.start) scrollToProgramSlot(target.start, target.mode);
+    else window.scrollTo({top:0, behavior:"smooth"});
+  }
+
   function applyTheme() {
     const dark = state.theme === "dark" ||
       (state.theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
@@ -1203,7 +1276,12 @@
 
   function renderStatus() {
     const s = statusForSelectedDay();
-    $("#statusCard").innerHTML = `<div class="status-line"><span class="status-dot"></span><div><div class="status-title">${esc(s.title)}</div><div class="status-sub">${esc(s.sub)}</div></div></div>`;
+    const today = DATA.days.some(d => d.date === conferenceNowParts().date);
+    $("#statusCard").classList.toggle("status-clickable", today);
+    $("#statusCard").setAttribute("role", today ? "button" : "status");
+    $("#statusCard").setAttribute("tabindex", today ? "0" : "-1");
+    $("#statusCard").setAttribute("aria-label", today ? `${s.title}. Jump to current programme slot.` : s.title);
+    $("#statusCard").innerHTML = `<div class="status-line"><span class="status-dot"></span><div><div class="status-title">${esc(s.title)}</div><div class="status-sub">${esc(s.sub)}</div></div>${today?`<span class="status-jump">›</span>`:""}</div>`;
   }
 
   function roomPill(room) {
@@ -1271,7 +1349,7 @@
       const endTimes = [...new Set(items.map(x => fmtTime(x,"end")))];
       const span = endTimes.length===1 ? endTimes[0] : "";
       const common = items.some(x => x.track===0);
-      return `<div class="time-group">
+      return `<div class="time-group" data-start="${esc(first.start)}">
         <div class="time-label">${esc(fmtTime(first,"start"))}${span?`<small>to ${esc(span)}</small>`:""}${dayPrefix}</div>
         <div class="event-grid ${common||items.length===1?"single":""}">
           ${items.map(e=>eventCard(e)).join("")}
@@ -2078,8 +2156,17 @@
       }
     });
 
-    $("#nowBtn").addEventListener("click",()=>{
-      state.day=detectConferenceDay(); saveState(); renderDays(); renderProgram(); showView("program");
+    $("#nowBtn").addEventListener("click", jumpToNow);
+
+    $("#statusCard").addEventListener("click", () => {
+      if ($("#statusCard").classList.contains("status-clickable")) jumpToNow();
+    });
+    $("#statusCard").addEventListener("keydown", e => {
+      if (!$("#statusCard").classList.contains("status-clickable")) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        jumpToNow();
+      }
     });
 
     $("#themeSelect").addEventListener("change",e=>{state.theme=e.target.value;saveState();applyTheme();});
@@ -2322,7 +2409,7 @@
     renderGallery();
     showView(state.view || "program");
     updateInstallUI();
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker-v23.js", { scope: "./", updateViaCache: "none" }).catch(()=>{});
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker-v24.js", { scope: "./", updateViaCache: "none" }).catch(()=>{});
   }
 
   window.addEventListener("beforeinstallprompt", event => {

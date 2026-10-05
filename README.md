@@ -1,29 +1,20 @@
-# MEMRISYS 2026 — official programme audit v23
+# MEMRISYS 2026 — current-slot navigation v24
 
-The app was rechecked against the current official MEMRISYS 2026 website and programme PDF.
+The top **Now** button now does more than select today's conference day.
 
-Verified:
-- Conference: 5–8 October 2026
-- Main venue: darmstadtium, Schlossgraben 1, 64283 Darmstadt
-- Talk rooms: Europium and Helium
-- Monday Welcome reception: Staatsarchiv
-- Tuesday Poster Session: Staatsarchiv, 18:00–20:00
-- Monday–Wednesday lunch: Mensa Stadtmitte
-- Wednesday Group Photo: Entrance Area darmstadtium, 17:30–17:50
-- Wednesday Conference dinner: Orangerie, 19:00–22:00
-- Session names and session chairs
-- Four-day schedule structure
-- Poster list: 104 posters, groups 1–35 Material Functionality, 36–70 Material Processing, 71–104 Applications
-- Official conference contact: memrisys26@oxide.tu-darmstadt.de
+When pressed it:
+- switches to the **Program** page,
+- selects the current conference day in Darmstadt,
+- clears programme search and room filtering so parallel talks are not hidden,
+- finds the programme item(s) happening at the current Darmstadt time,
+- scrolls directly to that time slot,
+- briefly highlights the slot.
 
-One remaining programme-import error was corrected:
-- Amy Chua: title is **“My father: A singular point”**
-- affiliation is **Yale University**
-  (the previous import had incorrectly appended “Yale University” to the title)
+If the conference is currently between programme items, it jumps to the **next** scheduled slot instead.
 
-The app now also includes direct links to the official live programme and participant-information page in Settings.
+The status card (for example **Happening now**) is now tappable and performs exactly the same action.
 
-Build: v23.
+Build: v24.
 
 ## Deploy
-Upload all files from the UPDATE zip to the repository root and overwrite matching files.
+Upload all files in the UPDATE zip to the repository root and overwrite matching files.
