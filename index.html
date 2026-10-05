@@ -13,7 +13,7 @@
   <link rel="manifest" href="./manifest-v13.webmanifest">
   <link rel="icon" href="./memrisys-icon-v13-192.png">
   <link rel="apple-touch-icon" href="./memrisys-icon-v13-180.png">
-  <link rel="stylesheet" href="./styles-v25.css">
+  <link rel="stylesheet" href="./styles-v26.css">
 </head>
 <body>
   <div class="app-shell">
@@ -223,7 +223,7 @@
 
         <div class="settings-section">
           <h3>App</h3>
-          <div class="build-version">Build v25 · searchable photo titles + notes</div>
+          <div class="build-version">Build v26 · Unclassified photo override</div>
           <div class="setting-card">
             <div>
               <strong>Install Memrisys 2026</strong>
@@ -306,7 +306,7 @@
         <strong>Match photos by time</strong>
         <span class="modal-spacer" aria-hidden="true"></span>
       </div>
-      <p class="photo-import-intro">Suggestions use camera capture time when available, otherwise the file date. Starred programme items are ranked first when sessions overlap.</p>
+      <p class="photo-import-intro">Suggestions use camera capture time when available, otherwise the file date. You can always keep a photo Unclassified, even when its timestamp matches a programme item.</p>
       <div id="photoImportList" class="photo-import-list"></div>
       <div class="photo-import-actions">
         <button id="photoImportCancel" class="secondary-btn" type="button">Cancel</button>
@@ -343,6 +343,10 @@
           <span id="photoViewerOwner" class="photo-viewer-owner"></span>
         </div>
         <div class="photo-viewer-field">
+          <label for="photoViewerAssignment">Assignment</label>
+          <select id="photoViewerAssignment" aria-label="Photo assignment"></select>
+        </div>
+        <div class="photo-viewer-field">
           <label for="photoViewerTitle">Title</label>
           <input id="photoViewerTitle" type="text" maxlength="140" placeholder="Add a title for this photo…" autocomplete="off">
         </div>
@@ -356,6 +360,6 @@
   </div>
 
   <script src="./data-v25.js"></script>
-  <script src="./app-v25.js"></script>
+  <script src="./app-v26.js"></script>
 </body>
 </html>
