@@ -1,6 +1,6 @@
 
 (() => {
-  const APP_BUILD = "v21";
+  const APP_BUILD = "v22";
   const DATA = window.CONFERENCE_DATA;
   const STORAGE_KEY = "memristorCalendarStateV1";
   const PHOTO_DB = "memrisysPhotoDB";
@@ -1389,26 +1389,62 @@
     $("#modalStar").textContent = on ? "★" : "☆";
   }
 
-  const MAIN_VENUE = {
-    name: "darmstadtium",
-    address: "Schlossgraben 1, 64283 Darmstadt, Germany",
-    maps: "https://www.google.com/maps/search/?api=1&query=darmstadtium%2C%20Schlossgraben%201%2C%2064283%20Darmstadt%2C%20Germany"
+  const LOCATIONS = {
+    darmstadtium: {
+      name: "darmstadtium",
+      address: "Schlossgraben 1, 64283 Darmstadt, Germany",
+      maps: "https://www.google.com/maps/search/?api=1&query=darmstadtium%2C%20Schlossgraben%201%2C%2064283%20Darmstadt%2C%20Germany"
+    },
+    staatsarchiv: {
+      name: "Hessisches Staatsarchiv Darmstadt",
+      address: "Karolinenplatz 3, 64289 Darmstadt, Germany",
+      maps: "https://www.google.com/maps/search/?api=1&query=Hessisches%20Staatsarchiv%20Darmstadt%2C%20Karolinenplatz%203%2C%2064289%20Darmstadt%2C%20Germany"
+    },
+    mensa: {
+      name: "Mensa Stadtmitte",
+      address: "Alexanderstraße 4, 64283 Darmstadt, Germany",
+      maps: "https://www.google.com/maps/search/?api=1&query=Mensa%20Stadtmitte%2C%20Alexanderstra%C3%9Fe%204%2C%2064283%20Darmstadt%2C%20Germany"
+    },
+    orangerie: {
+      name: "Orangerie Darmstadt",
+      address: "Bessunger Straße 44, 64285 Darmstadt, Germany",
+      maps: "https://www.google.com/maps/search/?api=1&query=Orangerie%20Darmstadt%2C%20Bessunger%20Stra%C3%9Fe%2044%2C%2064285%20Darmstadt%2C%20Germany"
+    }
   };
+  const MAIN_VENUE = LOCATIONS.darmstadtium;
 
   function venueForEvent(e) {
     const title = String(e?.title || "").toLowerCase();
-    if (title.includes("mensa stadtmitte")) {
-      return {name:"Mensa Stadtmitte", address:"TU Darmstadt", maps:"https://www.google.com/maps/search/?api=1&query=Mensa%20Stadtmitte%20TU%20Darmstadt"};
+
+    // Official programme:
+    // Mon welcome reception + Tue poster session -> Staatsarchiv
+    if (
+      title.includes("staatsarchiv") ||
+      title.includes("welcome reception") ||
+      e?.kind === "poster-session" ||
+      title.includes("poster session")
+    ) return LOCATIONS.staatsarchiv;
+
+    // Lunches are explicitly at Mensa Stadtmitte.
+    if (title.includes("mensa stadtmitte") || title.startsWith("lunch")) {
+      return LOCATIONS.mensa;
     }
-    if (e?.kind === "poster-session" || title.includes("poster session")) {
-      return {name:"Staatsarchiv", address:"Darmstadt", maps:"https://www.google.com/maps/search/?api=1&query=Hessisches%20Staatsarchiv%20Darmstadt"};
+
+    // Wednesday conference dinner is explicitly at Orangerie.
+    if (title.includes("conference dinner") || title.includes("orangerie")) {
+      return LOCATIONS.orangerie;
     }
+
+    // The group photo is explicitly at the darmstadtium entrance area;
+    // all normal programme rooms (Europium / Helium) are at darmstadtium.
     return MAIN_VENUE;
   }
 
   function venueBoxHtml(venue, room="") {
-    const roomText = room ? `${room[0].toUpperCase()+room.slice(1)} · ` : "";
-    return `<a class="detail-box detail-link" href="${venue.maps}" target="_blank" rel="noopener"><span>Venue</span><strong>${esc(roomText + venue.name)}</strong><small>${esc(venue.address)} · Open Maps ↗</small></a>`;
+    const roomName = room ? room[0].toUpperCase()+room.slice(1) : "";
+    const isMainVenue = venue === MAIN_VENUE;
+    const strongText = roomName && isMainVenue ? `${roomName} · ${venue.name}` : venue.name;
+    return `<a class="detail-box detail-link" href="${venue.maps}" target="_blank" rel="noopener"><span>Venue</span><strong>${esc(strongText)}</strong><small>${esc(venue.address)} · Open Maps ↗</small></a>`;
   }
 
   function openEvent(id) {
@@ -1444,8 +1480,7 @@
       <div class="modal-aff">${esc(p.affiliation)}</div>
       <div class="modal-details">
         <div class="detail-box"><span>Session</span><strong>Tuesday 6 October · 18:00–20:00</strong></div>
-        ${venueBoxHtml({name:"Staatsarchiv", address:"Darmstadt", maps:"https://www.google.com/maps/search/?api=1&query=Hessisches%20Staatsarchiv%20Darmstadt"})}
-        <div class="detail-box"><span>Venue</span><strong>Staatsarchiv</strong></div>
+        ${venueBoxHtml(LOCATIONS.staatsarchiv)}
         <div class="detail-box"><span>Presenting author</span><strong>${esc(p.presentingAuthor || p.author || "—")}</strong></div>
         <div class="detail-box"><span>Corresponding author</span><strong>${esc(p.correspondingAuthor || "—")}</strong></div>
         <div class="detail-box"><span>Program</span><strong>PDF page ${p.sourcePage}</strong></div>
@@ -2287,7 +2322,7 @@
     renderGallery();
     showView(state.view || "program");
     updateInstallUI();
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker-v21.js", { scope: "./", updateViaCache: "none" }).catch(()=>{});
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker-v22.js", { scope: "./", updateViaCache: "none" }).catch(()=>{});
   }
 
   window.addEventListener("beforeinstallprompt", event => {

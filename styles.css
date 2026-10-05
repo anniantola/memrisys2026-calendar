@@ -676,3 +676,7 @@ html[data-theme="dark"] .gallery-note-text{
   font-weight:800;
   letter-spacing:.02em;
 }
+
+/* v22 conference locations */
+.location-list{display:grid;gap:8px}
+.location-list .source-card{margin:0}
