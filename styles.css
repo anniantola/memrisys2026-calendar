@@ -680,3 +680,20 @@ html[data-theme="dark"] .gallery-note-text{
 /* v22 conference locations */
 .location-list{display:grid;gap:8px}
 .location-list .source-card{margin:0}
+
+
+/* v23 official conference information */
+.official-info-card{
+  margin:0 0 8px;
+  padding:14px 15px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--surface);
+  color:var(--text);
+  box-shadow:var(--shadow);
+}
+.official-info-card strong{display:block;font-size:13px;line-height:1.4}
+.official-info-card p{margin:6px 0;color:var(--muted);font-size:11px;line-height:1.45}
+.official-info-card a{color:var(--accent);font-size:11px;font-weight:800;text-decoration:none}
+.official-info-card a:hover{text-decoration:underline}
+.source-links{margin-top:0}

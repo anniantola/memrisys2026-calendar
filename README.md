@@ -1,24 +1,29 @@
-# MEMRISYS 2026 — verified locations v22
+# MEMRISYS 2026 — official programme audit v23
 
-Locations were rechecked against the official MEMRISYS 2026 programme.
+The app was rechecked against the current official MEMRISYS 2026 website and programme PDF.
 
-Official programme assignments:
-- Europium / Helium and normal conference programme: **darmstadtium**
-- Monday 18:00–20:00 Welcome reception: **Staatsarchiv**
-- Tuesday 18:00–20:00 Poster Session: **Staatsarchiv**
-- Monday–Wednesday lunch: **Mensa Stadtmitte**
-- Wednesday 17:30 Conference Group Photo: **Entrance Area darmstadtium**
-- Wednesday 19:00–22:00 Conference dinner: **Orangerie**
+Verified:
+- Conference: 5–8 October 2026
+- Main venue: darmstadtium, Schlossgraben 1, 64283 Darmstadt
+- Talk rooms: Europium and Helium
+- Monday Welcome reception: Staatsarchiv
+- Tuesday Poster Session: Staatsarchiv, 18:00–20:00
+- Monday–Wednesday lunch: Mensa Stadtmitte
+- Wednesday Group Photo: Entrance Area darmstadtium, 17:30–17:50
+- Wednesday Conference dinner: Orangerie, 19:00–22:00
+- Session names and session chairs
+- Four-day schedule structure
+- Poster list: 104 posters, groups 1–35 Material Functionality, 36–70 Material Processing, 71–104 Applications
+- Official conference contact: memrisys26@oxide.tu-darmstadt.de
 
-Exact addresses used for map links:
-- darmstadtium — Schlossgraben 1, 64283 Darmstadt
-- Hessisches Staatsarchiv Darmstadt — Karolinenplatz 3, 64289 Darmstadt
-- Mensa Stadtmitte — Alexanderstraße 4, 64283 Darmstadt
-- Orangerie Darmstadt — Bessunger Straße 44, 64285 Darmstadt
+One remaining programme-import error was corrected:
+- Amy Chua: title is **“My father: A singular point”**
+- affiliation is **Yale University**
+  (the previous import had incorrectly appended “Yale University” to the title)
 
-The previous generic Staatsarchiv Google Maps query was replaced by the exact name + street address. The welcome reception now also correctly maps to Staatsarchiv, and the conference dinner maps to Orangerie rather than darmstadtium.
+The app now also includes direct links to the official live programme and participant-information page in Settings.
 
-Build: v22.
+Build: v23.
 
 ## Deploy
 Upload all files from the UPDATE zip to the repository root and overwrite matching files.

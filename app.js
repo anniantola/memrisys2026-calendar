@@ -1,6 +1,6 @@
 
 (() => {
-  const APP_BUILD = "v22";
+  const APP_BUILD = "v23";
   const DATA = window.CONFERENCE_DATA;
   const STORAGE_KEY = "memristorCalendarStateV1";
   const PHOTO_DB = "memrisysPhotoDB";
@@ -2322,7 +2322,7 @@
     renderGallery();
     showView(state.view || "program");
     updateInstallUI();
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker-v22.js", { scope: "./", updateViaCache: "none" }).catch(()=>{});
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker-v23.js", { scope: "./", updateViaCache: "none" }).catch(()=>{});
   }
 
   window.addEventListener("beforeinstallprompt", event => {
