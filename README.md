@@ -40,3 +40,18 @@ parallel sessions on **07.10, 14:20–15:35**:
 Session timings are unchanged. The corresponding eight talk records in `data.js`
 have been updated. This notice should take precedence over the older programme/PDF
 if they still show the previous rooms.
+
+
+## Forced refresh package
+
+This package keeps the simple filenames (`data.js`, `app.js`, etc.) but the HTML
+requests them with `?rev=20261006-roomchange2` so Android Chrome/PWA cannot satisfy them from an
+older URL cache.
+
+After deployment, Settings should show:
+
+**Build · 6 Oct room update confirmed**
+
+The Wednesday 07.10 room override is:
+- High Frequency / Ultrafast / Devices → Helium
+- Synaptic Behavior → Europium

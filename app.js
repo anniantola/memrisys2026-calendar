@@ -2545,7 +2545,7 @@
     renderGallery();
     showView(state.view || "program");
     updateInstallUI();
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js", { scope: "./", updateViaCache: "none" }).catch(()=>{});
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js?rev=20261006-roomchange2", { scope: "./", updateViaCache: "none" }).catch(()=>{});
   }
 
   window.addEventListener("beforeinstallprompt", event => {
