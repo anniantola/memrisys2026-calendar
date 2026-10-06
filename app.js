@@ -1392,7 +1392,7 @@
     const session = e.session ? `<span class="pill">${esc(e.session)}</span>` : "";
     const person = e.speaker ? `${esc(e.speaker)}${e.affiliation ? ` · ${esc(e.affiliation)}` : ""}` : "";
     return `
-      <article class="event-card track-${e.track} kind-${esc(e.kind)}" data-event="${e.id}" tabindex="0">
+      <article class="event-card track-${e.track} room-${esc(e.room || "none")} kind-${esc(e.kind)}" data-event="${e.id}" tabindex="0">
         <button class="star-btn ${fav?"on":""}" data-star-event="${e.id}" aria-label="${fav?"Remove from":"Add to"} my schedule">${fav?"★":"☆"}</button>
         <div class="card-kicker">${roomPill(e.room)}${session}</div>
         <div class="event-title">${esc(e.title)}</div>
@@ -2545,7 +2545,7 @@
     renderGallery();
     showView(state.view || "program");
     updateInstallUI();
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js?rev=20261006-roomchange2", { scope: "./", updateViaCache: "none" }).catch(()=>{});
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js?rev=20261006-roomcolors", { scope: "./", updateViaCache: "none" }).catch(()=>{});
   }
 
   window.addEventListener("beforeinstallprompt", event => {

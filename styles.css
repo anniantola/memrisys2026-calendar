@@ -777,3 +777,8 @@ html[data-theme="dark"] .gallery-note-text{
   background:#171719;
   color:#fff;
 }
+
+
+/* Room-color correction: border color follows the actual room tag, not the old parallel-track number. */
+.event-card.kind-talk.room-europium{border-left:4px solid var(--europium)}
+.event-card.kind-talk.room-helium{border-left:4px solid var(--helium)}

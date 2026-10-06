@@ -55,3 +55,20 @@ After deployment, Settings should show:
 The Wednesday 07.10 room override is:
 - High Frequency / Ultrafast / Devices → Helium
 - Synaptic Behavior → Europium
+
+
+## Room border-color correction
+
+The organizer room swap changed the room tags correctly, but the card borders were
+still colored from the original parallel-track number.
+
+This is now fixed: normal talk-card border colors follow the **actual room**:
+
+- **Europium** → Europium color
+- **Helium** → Helium color
+
+Therefore the Wednesday 07.10, 14:20–15:35 swapped sessions now have both the
+correct room text and the matching room-color border.
+
+Visible build marker:
+**Build · 6 Oct room + border colors confirmed**
