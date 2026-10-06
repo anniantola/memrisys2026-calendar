@@ -27,3 +27,16 @@ The app content/functionality corresponds to the latest v26 build, including:
 
 ## Deploy
 Delete the old versioned app files from the repository, upload this package to the repository root, commit, and let GitHub Pages deploy.
+
+
+## Organizer room change — Wednesday 7 October 2026
+
+An organizer notice received on 6 October overrides the earlier programme for the
+parallel sessions on **07.10, 14:20–15:35**:
+
+- **High Frequency / Ultrafast / Devices** → **Helium**
+- **Synaptic Behavior** → **Europium**
+
+Session timings are unchanged. The corresponding eight talk records in `data.js`
+have been updated. This notice should take precedence over the older programme/PDF
+if they still show the previous rooms.
